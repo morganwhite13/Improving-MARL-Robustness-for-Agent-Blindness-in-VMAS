@@ -25,14 +25,10 @@ from torchrl.modules import MultiAgentMLP, ProbabilisticActor, TanhNormal
 from torchrl.objectives import ClipPPOLoss, ValueEstimators
 
 # Utils
-import random
-torch.manual_seed(0)
-random.seed(0)  # the blindness transforms use Python's random module
+torch.manual_seed(0)  # also seeds the blindness transforms, which use torch's RNG
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from torchrl.envs.transforms import Transform
-from tensordict.tensordict import TensorDictBase
 
 
 # Devices
@@ -98,113 +94,15 @@ env = TransformedEnv(
 )
 
 
-class BlindOneRandomAgentEveryStep(Transform):
-    def __init__(self, n_agents: int):
-        super().__init__()
-        self._n_agents = n_agents
-
-    def _step(
-        self, tensordict: TensorDictBase, next_tensordict: TensorDictBase
-    ) -> TensorDictBase:
-            next_tensordict[("agents", "observation")][..., random.randrange(self._n_agents), :] = 0
-            return next_tensordict
-        
-class BlindAllAgentsEveryStep(Transform):
-    def __init__(self, n_agents: int, blind_prob: float = 0.1):
-        super().__init__()
-        self._n_agents = n_agents
-        self._blind_prob = blind_prob  # Probability of blinding an agent
-
-    def _step(
-        self, tensordict: TensorDictBase, next_tensordict: TensorDictBase
-    ) -> TensorDictBase:
-            for agent_idx in range(self._n_agents):
-                # Blind the agent by setting their observation to zero
-                next_tensordict[("agents", "observation")][..., agent_idx, :] = 0
-            return next_tensordict
-
-
-class BlindOneRandomAgentIfProbability(Transform):
-    def __init__(self, n_agents: int, blind_prob: float = 0.1):
-        super().__init__()
-        self._n_agents = n_agents
-        self._blind_prob = blind_prob  # Probability of blinding an agent
-
-    def _step(
-        self, tensordict: TensorDictBase, next_tensordict: TensorDictBase
-    ) -> TensorDictBase:
-            if random.random() < self._blind_prob:
-                # Blind the agent by setting their observation to zero
-                next_tensordict[("agents", "observation")][..., random.randrange(self._n_agents), :] = 0
-            return next_tensordict
-
-
-
-class BlindRandomAgentsIfProbability(Transform):
-    def __init__(self, n_agents: int, blind_prob: float = 0.1):
-        super().__init__()
-        self._n_agents = n_agents
-        self._blind_prob = blind_prob  # Probability of blinding an agent
-
-    def _step(
-        self, tensordict: TensorDictBase, next_tensordict: TensorDictBase
-    ) -> TensorDictBase:
-            for agent_idx in range(self._n_agents):
-                if random.random() < self._blind_prob:
-                    # Blind the agent by setting their observation to zero
-                    next_tensordict[("agents", "observation")][..., agent_idx, :] = 0
-            return next_tensordict
-
-
-
-
-class BlindOneRandomAgentIfProbabilityForJSteps(Transform):
-    def __init__(self, n_agents: int, blind_prob: float = 0.1, max_blind_steps: int = 10):
-        super().__init__()
-        self._n_agents = n_agents
-        self._blind_prob = blind_prob  # Probability of blinding an agent
-        self.max_blind_steps = max_blind_steps  # Max number of steps the agent can be blinded for
-        # Dictionary to keep track of blind durations for each agent
-        self.blind_remaining = {agent_idx: 0 for agent_idx in range(n_agents)}
-
-    def _step(self, tensordict: TensorDictBase, next_tensordict: TensorDictBase) -> TensorDictBase:
-        blindedAgentExists = False
-        for agent_idx in range(self._n_agents):
-            if self.blind_remaining[agent_idx] > 0:
-                # If the agent is already blinded, decrement the counter
-                self.blind_remaining[agent_idx] -= 1
-                next_tensordict[("agents", "observation")][..., agent_idx, :] = 0
-                blindedAgentExists = True
-            elif not blindedAgentExists and random.random() < self._blind_prob:
-                # Blind the agent randomly and set the blind duration
-                blind_duration = random.randint(1, self.max_blind_steps)
-                self.blind_remaining[agent_idx] = blind_duration - 1  # Subtract 1 because we're applying the first step of blindness now
-                next_tensordict[("agents", "observation")][..., agent_idx, :] = 0
-        return next_tensordict
-
-
-class BlindRandomAgentsIfProbabilityForJSteps(Transform):
-    def __init__(self, n_agents: int, blind_prob: float = 0.1, max_blind_steps: int = 10):
-        super().__init__()
-        self._n_agents = n_agents
-        self._blind_prob = blind_prob  # Probability of blinding an agent
-        self.max_blind_steps = max_blind_steps  # Max number of steps the agent can be blinded for
-        # Dictionary to keep track of blind durations for each agent
-        self.blind_remaining = {agent_idx: 0 for agent_idx in range(n_agents)}
-
-    def _step(self, tensordict: TensorDictBase, next_tensordict: TensorDictBase) -> TensorDictBase:
-        for agent_idx in range(self._n_agents):
-            if self.blind_remaining[agent_idx] > 0:
-                # If the agent is already blinded, decrement the counter
-                self.blind_remaining[agent_idx] -= 1
-                next_tensordict[("agents", "observation")][..., agent_idx, :] = 0
-            elif random.random() < self._blind_prob:
-                # Blind the agent randomly and set the blind duration
-                blind_duration = random.randint(1, self.max_blind_steps)
-                self.blind_remaining[agent_idx] = blind_duration - 1  
-                # Subtract 1 because we're applying the first step of blindness now
-                next_tensordict[("agents", "observation")][..., agent_idx, :] = 0
-        return next_tensordict
+# Blindness transforms (vectorized: independent per parallel environment)
+from blindness import (
+    BlindAllAgentsEveryStep,
+    BlindOneRandomAgentEveryStep,
+    BlindOneRandomAgentIfProbability,
+    BlindOneRandomAgentIfProbabilityForJSteps,
+    BlindRandomAgentsIfProbability,
+    BlindRandomAgentsIfProbabilityForJSteps,
+)
 
 
 env2 = TransformedEnv(
