@@ -101,8 +101,8 @@ pip install -r requirements.txt
 ### Quick Start
 
 ```python
-# Run a single training experiment
-python Morgans4900Project.py
+# Run the full set of experiments
+python "MARL Robustness for Agent Blindness in VMAS.py"
 
 # The script will train agents on multiple blindness scenarios
 # and generate performance plots automatically
@@ -112,7 +112,8 @@ python Morgans4900Project.py
 
 ```python
 from torchrl.envs import TransformedEnv
-from Morgans4900Project import (
+# Copy the script to a valid module name first, e.g. marl_blindness.py
+from marl_blindness import (
     train_environment_variables,
     BlindOneRandomAgentIfProbabilityForJSteps
 )
@@ -183,19 +184,11 @@ Critic Network:
 ## 📁 Repository Structure
 
 ```
-marl-vmas-blindness/
-├── Morgans4900Project.py      # Main implementation (1,500+ lines)
-├── README.md                   # This file
-├── LICENSE                     # MIT License
-├── requirements.txt            # Python dependencies
-├── docs/
-│   ├── COMP_4900_Project_doc.pdf  # Original presentation slides
-│   └── experiments.md          # Detailed experimental results
-├── results/
-│   ├── plots/                  # Generated training curves
-│   └── trained_policies/       # Saved policy checkpoints
-└── examples/
-    └── custom_blindness.py     # Example usage scripts
+Improving-MARL-Robustness-for-Agent-Blindness-in-VMAS/
+├── MARL Robustness for Agent Blindness in VMAS.py   # Main implementation (about 930 lines)
+├── README.md                                        # This file
+├── LICENSE                                          # MIT License
+└── requirements.txt                                 # Python dependencies
 ```
 
 ## 🔬 Experiments Conducted
