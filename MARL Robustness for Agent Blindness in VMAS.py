@@ -25,11 +25,12 @@ from torchrl.modules import MultiAgentMLP, ProbabilisticActor, TanhNormal
 from torchrl.objectives import ClipPPOLoss, ValueEstimators
 
 # Utils
+import random
 torch.manual_seed(0)
+random.seed(0)  # the blindness transforms use Python's random module
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-import random
 from torchrl.envs.transforms import Transform
 from tensordict.tensordict import TensorDictBase
 
@@ -119,7 +120,7 @@ class BlindAllAgentsEveryStep(Transform):
     ) -> TensorDictBase:
             for agent_idx in range(self._n_agents):
                 # Blind the agent by setting their observation to zero
-                next_tensordict[("agents", "observation")][..., random.randrange(self._n_agents), :] = 0
+                next_tensordict[("agents", "observation")][..., agent_idx, :] = 0
             return next_tensordict
 
 
@@ -151,7 +152,7 @@ class BlindRandomAgentsIfProbability(Transform):
             for agent_idx in range(self._n_agents):
                 if random.random() < self._blind_prob:
                     # Blind the agent by setting their observation to zero
-                    next_tensordict[("agents", "observation")][..., random.randrange(self._n_agents), :] = 0
+                    next_tensordict[("agents", "observation")][..., agent_idx, :] = 0
             return next_tensordict
 
 
@@ -199,7 +200,7 @@ class BlindRandomAgentsIfProbabilityForJSteps(Transform):
                 next_tensordict[("agents", "observation")][..., agent_idx, :] = 0
             elif random.random() < self._blind_prob:
                 # Blind the agent randomly and set the blind duration
-                blind_duration = random.randint(1, 10)
+                blind_duration = random.randint(1, self.max_blind_steps)
                 self.blind_remaining[agent_idx] = blind_duration - 1  
                 # Subtract 1 because we're applying the first step of blindness now
                 next_tensordict[("agents", "observation")][..., agent_idx, :] = 0
@@ -478,7 +479,7 @@ plt.figure(figsize=(10, 6))
 # for desc, rewards in all_rewards.items():
 for res in results:
     color = colors[colorIndex]
-    plt.plot(res["reward"], label=(res["desc"]+" normalization = " + str(res["norm"])), linestyle='solid', color=color)
+    plt.plot(res["reward"], label=res["desc"], linestyle='solid', color=color)
     colorIndex += 1
 plt.xlabel("Training Iterations")
 plt.ylabel("Reward")
@@ -712,14 +713,29 @@ for res in rolloutResults:
 
 
 #Experiment testing reward across different blindness probabilties
+def make_base_env():
+    # Fresh base env (VMAS + RewardSum), built the same way as the base env at the top of the file
+    base_env = VmasEnv(
+        scenario=scenario_name,
+        num_envs=num_vmas_envs,
+        continuous_actions=True,
+        max_steps=max_steps,
+        device=vmas_device,
+        n_agents=n_agents,
+    )
+    return TransformedEnv(base_env, RewardSum(in_keys=[base_env.reward_key], out_keys=[("agents", "episode_reward")]))
+
+
 blindnessProbabilities = [0.01, 0.05, 0.10, 0.2, 0.3, 0.5]
 blindnessResults = []
 for blindProb in blindnessProbabilities:
-    env = TransformedEnv(env, BlindOneRandomAgentIfProbabilityForJSteps(env.n_agents, blindProb, 10))
+    base_env = make_base_env()
+    env = TransformedEnv(base_env, BlindOneRandomAgentIfProbabilityForJSteps(base_env.n_agents, blindProb, 10))
     description = "Blind One Random Agent Randomly For a Random Number of Steps"
     rewards, policy = train_environment_variables(env, description)
     # print(f"Rewards for {rewards}:")
     for i in range(len(rewards)):
+        # Rescaling is applied for plotting; it makes curves across settings not directly comparable
         rewards[i] = rewards[i]*blindProb*5
         
     blindnessResults.append({"reward": rewards, "policy": policy, "env": env, "desc": description, "blindProb": blindProb})
@@ -757,10 +773,12 @@ for res in blindnessResults:
 blindnessSteps = [1, 2, 3, 5, 7, 10, 20]
 blindnessStepResults = []
 for blindSteps in blindnessSteps:
-    env = TransformedEnv(env, BlindOneRandomAgentIfProbabilityForJSteps(env.n_agents, 0.1, blindSteps))
+    base_env = make_base_env()
+    env = TransformedEnv(base_env, BlindOneRandomAgentIfProbabilityForJSteps(base_env.n_agents, 0.1, blindSteps))
     description = "Blind One Random Agent Randomly For a Random Number of Steps"
     rewards, policy = train_environment_variables(env, description)
     for i in range(len(rewards)):
+        # Rescaling is applied for plotting; it makes curves across settings not directly comparable
         rewards[i] = rewards[i]*0.1*blindSteps/2
     blindnessStepResults.append({"reward": rewards, "policy": policy, "env": env, "desc": description, "blindSteps": blindSteps})
 

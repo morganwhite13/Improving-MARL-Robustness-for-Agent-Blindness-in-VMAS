@@ -42,6 +42,24 @@ Implemented six environment transforms that randomly zero out agent observations
 - **Redundancy helps**: 5-7 agents provide optimal balance between redundancy and coordination overhead
 - **Performance thresholds exist**: Systems maintain function up to ~30% blindness probability before sharp degradation
 
+## Known issues and status
+
+All results in this README were produced before the following fixes, so the numbers should be regenerated:
+
+- `BlindAllAgentsEveryStep` picked a random agent (with replacement) on each loop pass, so it did not blind every agent. Any earlier "blind all agents" results came from that version.
+- `BlindRandomAgentsIfProbability` blinded a fresh random agent, not the agent that passed the probability check.
+- `BlindRandomAgentsIfProbabilityForJSteps` ignored `max_blind_steps` and always drew durations from 1 to 10.
+- The blindness-probability and blind-duration sweeps wrapped the previous iteration's environment, so transforms stacked up across settings. Each setting now starts from a fresh base environment.
+- Only `torch` was seeded. The blindness transforms use Python's `random`, which is now seeded too.
+- The first plot read a `"norm"` key that its results did not have, so the script crashed after the first experiment.
+
+Two issues remain, and fixing them needs a real run:
+
+- The blindness transforms make one random choice per step and apply it to all 30 parallel environments at once (`num_envs = 30`). Blind countdowns are kept per agent rather than per environment, and they are not reset between episodes.
+- Each configuration is trained once with a single seed. Policies are scored on their own training rollouts, not in a separate evaluation.
+
+The reward rescaling in the blindness-probability and blind-duration plots is applied for display only, so those curves cannot be compared directly across settings.
+
 ## 📊 Experimental Results
 
 ### Baseline Comparison
