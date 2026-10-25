@@ -187,6 +187,7 @@ def train_environment_variables(env, description, norm=True, clipVal=0.2, batchS
     policy = ProbabilisticActor(
         module=policy_module,
         spec=env.unbatched_action_spec,
+        safe=True,  # clamp sampled actions into the spec; TanhNormal can overshoot by float error and VMAS rejects it
         in_keys=[("agents", "loc"), ("agents", "scale")],
         out_keys=[env.action_key],
         distribution_class=TanhNormal,

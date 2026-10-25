@@ -54,6 +54,9 @@ The original results (the tables further down) were produced with code that had 
 - Every transform made one random choice per step and applied it to all 30 parallel environments at once, kept blind countdowns per agent rather than per environment, and never reset them between episodes. The transforms now live in `blindness.py`, draw independently per environment, and are covered by tests in `tests/`.
 - The blindness-probability and blind-duration sweeps wrapped the previous iteration's environment, so transforms stacked up across settings. Each setting now starts from a fresh base environment.
 - The first plot read a `"norm"` key that its results did not have, so the script crashed after the first experiment.
+- The "VMAS Scenarios" experiment could crash with "Physical actions ... out of its range": a `TanhNormal` sample can overshoot the action bound by floating-point error, which VMAS rejects. The policy now clamps actions into the spec (`safe=True`).
+
+With these fixes, every experiment in the script has been run end to end with a reduced training budget (1 iteration each) to check that it completes.
 
 Experiment 1 has been re-run with the fixed code over 3 seeds (below). The other experiments still need re-running. Two limitations remain: policies are scored on their own training rollouts rather than a separate evaluation, and with the default 25 iterations most reward curves are still rising, so training hasn't converged.
 
