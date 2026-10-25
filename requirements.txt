@@ -1,24 +1,13 @@
-# Core Dependencies
-torch>=1.13.0
-torchvision>=0.14.0
-torchaudio>=0.13.0
+# Tested with Python 3.11. The training script uses the TorchRL API from late
+# 2024 (for example SyncDataCollector), which newer TorchRL releases removed,
+# so these versions are pinned.
+torch==2.5.1
+torchrl==0.6.0
+tensordict==0.6.2
+vmas==1.4.3
+numpy<2
+matplotlib
+tqdm
 
-# TorchRL and Related
-torchrl>=0.2.0
-tensordict>=0.1.0
-
-# VMAS Framework
-vmas>=1.3.0
-
-# Visualization
-matplotlib>=3.5.0
-seaborn>=0.12.0
-
-# Utilities
-tqdm>=4.65.0
-numpy>=1.23.0
-
-# Optional: For better performance
-# Install with: pip install -r requirements.txt
-# For GPU support, install PyTorch with CUDA first:
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# Tests
+pytest
