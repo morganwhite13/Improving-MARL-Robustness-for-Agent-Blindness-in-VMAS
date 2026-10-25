@@ -12,7 +12,7 @@ A Multi-Agent Reinforcement Learning research project investigating how cooperat
 
 **Key Innovation:** Six custom blindness scenarios implemented as VMAS environment transforms, ranging from simple single-step occlusions to complex multi-agent, variable-duration sensory failures.
 
-**Results:** Achieved 86% performance improvement over baseline through systematic hyperparameter optimization, with agents maintaining 84% of baseline performance even under 10% blindness probability.
+**Results:** Re-run over 3 seeds with the fixed code, training without blindness scores highest, short occasional blindness costs relatively little, and blinding every agent prevents learning. Tuned PPO settings (advantage normalization, clip 0.3, more epochs) beat the original settings on average and vary far less between seeds, though the gain is smaller than the original single-seed +86%.
 
 ### Real-World Applications
 
@@ -36,10 +36,10 @@ Implemented six environment transforms that randomly zero out agent observations
 
 ### Key Findings
 
-The findings below come from the original single-seed runs, before the bug fixes described in "Known issues and status". The Experiment 1 re-run supports the first point; the others still need re-running.
+The findings below come from the original single-seed runs, before the bug fixes described in "Known issues and status". The Experiment 1 and hyperparameter re-runs support the first two points (the second only in part); the others still need re-running.
 
 - **Robustness is learnable**: Agents develop cooperative strategies that gracefully degrade under partial observability
-- **Hyperparameters matter**: Optimal configuration (normalized advantages, clip=0.3, batch=100, epochs=30) yielded +86% performance
+- **Hyperparameters matter**: The original runs reported +86% for normalized advantages, clip=0.3, batch=100, epochs=30. The re-run finds a smaller, noisier gain, and that configuration isn't the best one tested (see "Hyperparameter re-run")
 - **Advantage normalization is critical**: Essential for handling variance when agents experience different observation states
 - **Redundancy helps**: 5-7 agents provide optimal balance between redundancy and coordination overhead
 - **Performance thresholds exist**: Systems maintain function up to ~30% blindness probability before sharp degradation
@@ -106,14 +106,32 @@ To reproduce: `python experiments/run_exp1.py . <seed> experiments/seed<seed>.js
 - **Epochs**: Diminishing returns after 30 epochs
 - **Agent count**: 5-7 agents optimal for robustness vs. coordination
 
-**Best Configuration:**
+**Configuration reported as best in the original runs:**
 ```python
 normalize_advantage = True
 clip_epsilon = 0.3
 minibatch_size = 100
 num_epochs = 30
-# Result: ~520 reward (+86% over baseline 280)
+# Original single-seed result: ~520 reward (+86% over baseline 280)
 ```
+
+### Hyperparameter re-run
+
+The comparison above was re-run with the fixed code: 3 seeds per setup, on the scenario where one random agent is blinded for 1–10 steps with probability 0.1. "Best" is the configuration above; the last three rows each revert one of its changes.
+
+| Setup | Normalize | Clip | Batch | Epochs | Final reward (mean ± std) | Seeds |
+|-------|-----------|------|-------|--------|---------------------------|-------|
+| Original | False | 0.2 | 200 | 20 | 34.2 ± 16.1 | 23.3, 26.6, 52.7 |
+| Best | True | 0.3 | 100 | 30 | 45.3 ± 6.8 | 53.2, 41.8, 41.0 |
+| Best, but clip 0.2 | True | 0.2 | 100 | 30 | 46.1 ± 10.7 | 36.9, 57.9, 43.5 |
+| Best, but batch 200 | True | 0.3 | 200 | 30 | 55.6 ± 1.8 | 55.8, 53.7, 57.2 |
+| Best, but 20 epochs | True | 0.3 | 100 | 20 | 52.4 ± 6.8 | 50.9, 59.8, 46.4 |
+
+![Final reward per hyperparameter setup, mean ± std with each seed shown](experiments/tuning_rewards.png)
+
+What holds up: every tuned setup beats the original settings on average (+32% for "Best") and varies much less between seeds. What doesn't: the +86% figure, and the claim that batch 100 and 30 epochs are optimal. Going back to batch 200 or to 20 epochs did as well or better, and with 3 seeds the differences between the tuned setups are within noise.
+
+To reproduce: `python experiments/run_tuning.py . <seed> experiments/tuning_seed<seed>.json` for each seed (about 50 minutes per seed on one CPU core), merge the seed files into `experiments/tuning_results.json`, then `python experiments/plot_tuning.py`.
 
 ## 🚀 Getting Started
 
