@@ -36,6 +36,8 @@ Implemented six environment transforms that randomly zero out agent observations
 
 ### Key Findings
 
+The findings below come from the original single-seed runs, before the bug fixes described in "Known issues and status". The Experiment 1 re-run supports the first point; the others still need re-running.
+
 - **Robustness is learnable**: Agents develop cooperative strategies that gracefully degrade under partial observability
 - **Hyperparameters matter**: Optimal configuration (normalized advantages, clip=0.3, batch=100, epochs=30) yielded +86% performance
 - **Advantage normalization is critical**: Essential for handling variance when agents experience different observation states
@@ -44,25 +46,44 @@ Implemented six environment transforms that randomly zero out agent observations
 
 ## Known issues and status
 
-All results in this README were produced before the following fixes, so the numbers should be regenerated:
+The original results (the tables further down) were produced with code that had several bugs, all now fixed:
 
-- `BlindAllAgentsEveryStep` picked a random agent (with replacement) on each loop pass, so it did not blind every agent. Any earlier "blind all agents" results came from that version.
+- `BlindAllAgentsEveryStep` picked a random agent (with replacement) on each loop pass, so it blinded about two of three agents, not all of them.
 - `BlindRandomAgentsIfProbability` blinded a fresh random agent, not the agent that passed the probability check.
 - `BlindRandomAgentsIfProbabilityForJSteps` ignored `max_blind_steps` and always drew durations from 1 to 10.
+- Every transform made one random choice per step and applied it to all 30 parallel environments at once, kept blind countdowns per agent rather than per environment, and never reset them between episodes. The transforms now live in `blindness.py`, draw independently per environment, and are covered by tests in `tests/`.
 - The blindness-probability and blind-duration sweeps wrapped the previous iteration's environment, so transforms stacked up across settings. Each setting now starts from a fresh base environment.
-- Only `torch` was seeded. The blindness transforms use Python's `random`, which is now seeded too.
 - The first plot read a `"norm"` key that its results did not have, so the script crashed after the first experiment.
 
-Two issues remain, and fixing them needs a real run:
-
-- The blindness transforms make one random choice per step and apply it to all 30 parallel environments at once (`num_envs = 30`). Blind countdowns are kept per agent rather than per environment, and they are not reset between episodes.
-- Each configuration is trained once with a single seed. Policies are scored on their own training rollouts, not in a separate evaluation.
+Experiment 1 has been re-run with the fixed code over 3 seeds (below). The other experiments still need re-running. Two limitations remain: policies are scored on their own training rollouts rather than a separate evaluation, and with the default 25 iterations most reward curves are still rising, so training hasn't converged.
 
 The reward rescaling in the blindness-probability and blind-duration plots is applied for display only, so those curves cannot be compared directly across settings.
 
 ## 📊 Experimental Results
 
-### Baseline Comparison
+### Experiment 1, re-run with the fixed code
+
+Final episode reward (mean over the 30 parallel environments, last training iteration), mean ± standard deviation over 3 seeds. Same settings as the original experiment: `norm=False`, clip 0.2, 25 iterations × 6,000 frames, balance scenario with 3 agents.
+
+| Blindness Scenario | Final Reward |
+|-------------------|--------------|
+| No blindness (baseline) | 49.2 ± 4.8 |
+| Blind 1 random agent with probability 0.1 | 40.5 ± 11.6 |
+| Blind each agent with probability 0.1 | 37.8 ± 15.6 |
+| Blind 1 random agent for 1–10 steps (probability 0.1) | 34.2 ± 16.1 |
+| Blind each agent for 1–10 steps (probability 0.1) | 10.7 ± 9.2 |
+| Blind 1 random agent every step | 5.5 ± 12.9 |
+| Blind all agents every step | −11.8 ± 1.9 |
+
+![Reward curves per blindness scenario, mean ± std over 3 seeds](experiments/exp1_rewards.png)
+
+What holds up: training without blindness does best, and blinding every agent prevents learning entirely. Occasional, short blindness costs relatively little, while persistent blindness (every step, or several agents for several steps) hurts much more. The spread between seeds is as large as the gaps between the middle scenarios, so their order isn't meaningful from 3 seeds.
+
+These rewards are on a different scale from the original table below (about 50 rather than about 450 for the baseline). The re-run used the pinned versions in `requirements.txt`; the original runs may have used different library versions or reported reward differently.
+
+To reproduce: `python experiments/run_exp1.py . <seed> experiments/seed<seed>.json` for each seed (about 45 minutes per seed on one CPU core), then `python experiments/plot_exp1.py`. The results used here are in `experiments/exp1_results.json`.
+
+### Original results (before the fixes)
 
 | Blindness Scenario | Final Reward | Performance vs. Baseline |
 |-------------------|--------------|--------------------------|
@@ -95,25 +116,17 @@ num_epochs = 30
 
 ### Prerequisites
 
-```bash
-# Python 3.8 or higher required
-python --version
-```
+Python 3.11. The script uses the TorchRL API from late 2024, so `requirements.txt` pins the versions it was checked with.
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/marl-vmas-blindness.git
-cd marl-vmas-blindness
-
-# Install dependencies
-pip install torch torchvision torchaudio
-pip install torchrl tensordict vmas
-pip install matplotlib tqdm
-
-# Or use requirements.txt
+git clone https://github.com/morganwhite13/Improving-MARL-Robustness-for-Agent-Blindness-in-VMAS.git
+cd Improving-MARL-Robustness-for-Agent-Blindness-in-VMAS
 pip install -r requirements.txt
+
+# Run the tests
+pytest -q tests/
 ```
 
 ### Quick Start
@@ -130,11 +143,10 @@ python "MARL Robustness for Agent Blindness in VMAS.py"
 
 ```python
 from torchrl.envs import TransformedEnv
-# Copy the script to a valid module name first, e.g. marl_blindness.py
-from marl_blindness import (
-    train_environment_variables,
-    BlindOneRandomAgentIfProbabilityForJSteps
-)
+from blindness import BlindOneRandomAgentIfProbabilityForJSteps
+# train_environment_variables is defined in the main script, which runs every
+# experiment when executed; experiments/run_exp1.py shows how to load the
+# function and environments without running them
 
 # Create environment with custom blindness
 env = VmasEnv(scenario="balance", n_agents=3, ...)
@@ -203,7 +215,11 @@ Critic Network:
 
 ```
 Improving-MARL-Robustness-for-Agent-Blindness-in-VMAS/
-├── MARL Robustness for Agent Blindness in VMAS.py   # Main implementation (about 930 lines)
+├── MARL Robustness for Agent Blindness in VMAS.py   # Experiments and MAPPO training
+├── blindness.py                                     # Blindness transforms
+├── tests/test_blindness.py                          # Tests for the transforms
+├── experiments/                                     # Experiment 1 re-run: script, results, plot
+├── .github/workflows/tests.yml                      # Runs the tests in CI
 ├── README.md                                        # This file
 ├── LICENSE                                          # MIT License
 └── requirements.txt                                 # Python dependencies
