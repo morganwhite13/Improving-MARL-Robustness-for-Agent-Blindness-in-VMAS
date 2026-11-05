@@ -15,6 +15,7 @@ import os
 import sys
 
 import matplotlib
+import matplotlib.ticker
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -50,6 +51,7 @@ for ax, (key, label) in zip(axes, [("clip", "PPO clip value"), ("batch", "Miniba
     ax.axvline(DEFAULT[key], color="grey", lw=0.8, ls="--")
     ax.set_xscale("log" if key == "batch" else "linear")
     ax.set_xticks(values, [str(v) for v in values])
+    ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
     ax.set_xlabel(label + " (dashed: default)")
     ax.grid(alpha=0.3)
 axes[0].set_ylabel("Final episode reward (mean ± std, dots: seeds)")

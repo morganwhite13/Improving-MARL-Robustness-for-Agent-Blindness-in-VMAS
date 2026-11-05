@@ -58,7 +58,7 @@ The original results (the tables further down) were produced with code that had 
 
 With these fixes, every experiment in the script has been run end to end with a reduced training budget (1 iteration each) to check that it completes.
 
-Experiment 1 has been re-run with the fixed code over 3 seeds (below). The other experiments still need re-running. Two limitations remain: policies are scored on their own training rollouts rather than a separate evaluation, and with the default 25 iterations most reward curves are still rising, so training hasn't converged.
+Experiments 1-5, 7, 8 and the hyperparameter comparison have been re-run with the fixed code over 3 seeds (below). Experiment 6 (blindness probability) is answered by the robustness test, which evaluates trained policies on separate episodes across blindness probabilities. Only the VMAS scenarios experiment hasn't been re-run. Most re-runs keep the original 25 training iterations, at which most reward curves are still rising; the robustness test and Experiment 7 use 100.
 
 The reward rescaling in the blindness-probability and blind-duration plots is applied for display only, so those curves cannot be compared directly across settings.
 
@@ -121,9 +121,9 @@ To reproduce: `python experiments/run_exp1.py . <seed> experiments/norm_seed<see
 
 **Impact of Key Parameters:**
 - **Normalization**: Essential (+40-60 reward improvement across scenarios). *Not supported by the 3-seed re-run; see "Experiment 2 re-run".*
-- **Clip value**: Optimal at 0.3 (+28% over default 0.2)
-- **Batch size**: Smaller batches (50-100) outperform default 200
-- **Epochs**: Diminishing returns after 30 epochs
+- **Clip value**: Optimal at 0.3 (+28% over default 0.2). *The re-run agrees 0.3 is best of those tested, by more; see "Experiments 3-5 re-run".*
+- **Batch size**: Smaller batches (50-100) outperform default 200. *Supported by the re-run.*
+- **Epochs**: Diminishing returns after 30 epochs. *Not supported: 50 epochs scored highest in the re-run.*
 - **Agent count**: 5-7 agents optimal for robustness vs. coordination. *Not supported by the 3-seed re-run; see "Experiment 8 re-run".*
 
 **Configuration reported as best in the original runs:**
@@ -152,6 +152,45 @@ The comparison above was re-run with the fixed code: 3 seeds per setup, on the s
 What holds up: every tuned setup beats the original settings on average (+32% for "Best") and varies much less between seeds. What doesn't: the +86% figure, and the claim that batch 100 and 30 epochs are optimal. Going back to batch 200 or to 20 epochs did as well or better, and with 3 seeds the differences between the tuned setups are within noise.
 
 To reproduce: `python experiments/run_tuning.py . <seed> experiments/tuning_seed<seed>.json` for each seed (about 50 minutes per seed on one CPU core), merge the seed files into `experiments/tuning_results.json`, then `python experiments/plot_tuning.py`.
+
+### Experiments 3-5 re-run: clip value, minibatch size, epochs
+
+The original sweeps changed one PPO setting at a time on the one-agent, 1–10-step blindness scenario, with normalization on. The re-run does the same with 3 seeds and four values per setting (the default is clip 0.2, batch 200, 20 epochs):
+
+| Setting | Values (mean final reward ± std) |
+|---|---|
+| Clip value | 0.1: −3.5 ± 5.0 · **0.2: 21.3 ± 7.6** · 0.3: 45.2 ± 10.0 · 0.5: 30.8 ± 30.0 |
+| Minibatch size | 50: 42.3 ± 6.1 · 100: 38.8 ± 19.9 · **200: 21.3 ± 7.6** · 500: 14.5 ± 19.8 |
+| Epochs | 10: 4.6 ± 10.6 · **20: 21.3 ± 7.6** · 30: 40.5 ± 9.2 · 50: 49.9 ± 3.6 |
+
+![Final reward against clip value, minibatch size and epochs, one setting changed at a time](experiments/sweep.png)
+
+- **Clip 0.3 is best of those tested** (about double the default), as the original found. 0.1 doesn't learn, and 0.5 varies wildly between seeds.
+- **Smaller minibatches do better**, as the original found: 50 and 100 beat the default 200.
+- **More epochs keep helping.** The original reported diminishing returns after 30; here 50 epochs scored highest and was the most consistent across seeds.
+- **The common thread:** every change that helped means more or bigger policy updates per iteration (smaller minibatches, more epochs, a wider clip). With only 25 iterations, the default settings undertrain. The robustness test points the same way: results changed a lot between 25 and 100 iterations.
+- These are one-at-a-time changes from the default. In the hyperparameter re-run, which changed several settings together, clip 0.2 and 0.3 did about the same.
+
+To reproduce: run `python experiments/run_sweep.py . <seed> <out.json> <clip> <batch> <epochs>` for each setting and seed (one short run each, so many can go in parallel), then `python experiments/plot_sweep.py <folder of outputs>`. The default-setting runs are the robustness test's 25-iteration one-agent runs (repeat runs reproduce exactly), so the plot script takes them from `robustness_results.json`.
+
+### Experiment 7 re-run: blind spell length
+
+The original experiment retrained a policy for each maximum blind duration and scored it on its own training rollouts. The re-run trains two policies per seed for 100 iterations, one without blindness and one with one-agent blindness (1–10 steps, probability 0.1). It then evaluates each on separate episodes at blindness probability 0.1, with maximum blind spells from 1 to 20 steps:
+
+| Trained with | Evaluated with | No blindness | 1 step | 3 | 5 | 10 | 20 |
+|---|---|---|---|---|---|---|---|
+| No blindness | One agent blind | 69.7 ± 2.5 | 69.2 ± 1.9 | 66.3 ± 1.9 | 64.5 ± 2.2 | 59.7 ± 5.7 | 55.9 ± 8.7 |
+| One agent blind | One agent blind | 72.3 ± 4.6 | 68.9 ± 2.7 | 68.1 ± 2.6 | 66.7 ± 2.9 | 65.4 ± 3.8 | 61.8 ± 5.6 |
+| No blindness | Each agent blind | 69.7 ± 2.5 | 67.6 ± 4.2 | 56.2 ± 8.8 | 47.3 ± 14.2 | 30.0 ± 21.3 | 15.0 ± 18.1 |
+| One agent blind | Each agent blind | 72.3 ± 4.6 | 68.8 ± 5.3 | 64.9 ± 5.7 | 61.0 ± 5.8 | 51.5 ± 7.5 | 35.4 ± 8.6 |
+
+![Evaluation reward against maximum blind spell length for each training condition](experiments/duration.png)
+
+- **Longer blind spells hurt, steadily.** With one agent blind at a time the decline is gentle (the no-blindness policy keeps 80% of its reward even with spells of up to 20 steps). When every agent can go blind, it's steep: 68% at 5 steps, 43% at 10, 22% at 20.
+- **Training with blindness helps more as spells get longer**, and it carries beyond what was trained on: trained on spells of up to 10 steps, the policy keeps 49% at 20 steps against 22% without blindness training.
+- The original's "1–5 steps minimal, 7–10 moderate, 20+ severe" roughly matches each-agent blindness, but not one-agent blindness, which stays mild throughout.
+
+To reproduce: `python experiments/run_duration.py . <seed> <out.json> <none|one> 100 [policy.pt]` for each seed and condition (about 13 minutes each), then `python experiments/plot_duration.py <folder of outputs>`.
 
 ### Experiment 8 re-run: team size
 
@@ -364,9 +403,11 @@ The original single-seed runs had reported >70% up to p = 0.2 and a threshold ne
 
 ### Duration Sensitivity
 
-- **1-5 steps**: Minimal impact, agents compensate effectively
-- **7-10 steps**: Moderate degradation, coordination suffers
-- **20+ steps**: Severe disruption, often unrecoverable
+From the Experiment 7 re-run (blindness probability 0.1, policy trained without blindness, share of unblinded reward kept):
+
+- **One agent blind at a time:** 93% with spells up to 5 steps, 86% up to 10, 80% up to 20
+- **Each agent can go blind:** 68% up to 5 steps, 43% up to 10, 22% up to 20
+- A policy trained with blindness keeps more at every length: 84%, 71% and 49% for each-agent blindness
 
 ## 🛠️ Technical Stack
 
