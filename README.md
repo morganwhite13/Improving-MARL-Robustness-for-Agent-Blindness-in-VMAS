@@ -307,6 +307,35 @@ What this shows:
 
 To reproduce: `python experiments/run_robustness.py . <seed> experiments/robustness_seed<seed>.json [n_iters]` for each seed (about 13 minutes per seed on one CPU core at 25 iterations, 40 at 100), merge the seed files into `experiments/robustness_results.json` (or `robustness_100iters_results.json`), then `python experiments/plot_robustness.py [results file]`.
 
+### Beyond the original experiments: blindness-aware agents and a curriculum
+
+Three ideas, each trained for 100 iterations with one random agent blinded for 1–10 steps (probability 0.1), 3 seeds, and evaluated exactly as in the robustness test (`experiments/run_variant.py`):
+
+- **Blind flag:** each agent's observation gains a flag that is 1 while it's blind (`make_env(aware="flag")`).
+- **Flag and memory:** a blind agent also keeps its last real observation instead of seeing zeros (`make_env(aware="memory")`), like a sensor that holds its last reading.
+- **Curriculum:** the blindness probability rises from 0 to 0.1 over the first 50 iterations, then stays at 0.1.
+
+| Trained with | One agent blind, p = 0.5 | Each agent blind, p = 0.1 | p = 0.2 | p = 0.5 |
+|---|---|---|---|---|
+| No blindness | 43.2 | 30.0 | 15.4 | −1.9 |
+| One-agent blindness | 58.2 | 51.5 | 32.2 | 3.4 |
+| Each-agent blindness | 65.0 | 61.7 | 43.1 | 5.7 |
+| **One-agent blindness + flag and memory** | **70.2** | **67.6** | **63.1** | **41.1** |
+| One-agent blindness + flag only | 52.9 | 43.2 | 11.8 | −1.6 |
+| One-agent blindness, curriculum | 36.5 | 20.5 | 1.3 | −6.5 |
+
+Mean episode reward over 3 seeds; every policy scores 70–72 with no blindness.
+
+![Evaluation reward against blindness probability for each variant](experiments/variants.png)
+
+- **Memory makes the team far more robust.** With a blind agent keeping its last real observation, the team keeps 97% of its reward when one agent is blind half the time. When every agent can go blind 20% of the time, it scores 63 against at most 43 for any plain policy, even though it only trained with one agent blinded at a time. It costs nothing when no one is blind.
+- **A flag alone doesn't help.** Knowing you're blind, with nothing to act on, does slightly worse than plain blindness training.
+- **The curriculum hurts.** Ramping blindness up means less blindness during training, and robustness falls to about the no-blindness policy's level.
+
+**The scenarios that didn't learn** (wheel, ball_passage) still don't with a longer horizon (`gamma` 0.99, GAE λ 0.95) or more exploration (entropy 0.01), 100 iterations, 2 seeds each. They likely need reward shaping or a different setup.
+
+To reproduce: `python experiments/run_variant.py <variant> <seed> <out.json>` (variants: `aware-flag`, `aware-memory`, `curriculum`, `stuck:<scenario>:<setting>`), merge into `experiments/variants_results.json`, then `python experiments/plot_variants.py`.
+
 ## 🚀 Getting Started
 
 ### Prerequisites
