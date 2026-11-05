@@ -58,7 +58,7 @@ The original results (the tables further down) were produced with code that had 
 
 With these fixes, every experiment in the script has been run end to end with a reduced training budget (1 iteration each) to check that it completes.
 
-Experiments 1-5, 7, 8 and the hyperparameter comparison have been re-run with the fixed code over 3 seeds (below). Experiment 6 (blindness probability) is answered by the robustness test, which evaluates trained policies on separate episodes across blindness probabilities. Only the VMAS scenarios experiment hasn't been re-run. Most re-runs keep the original 25 training iterations, at which most reward curves are still rising; the robustness test and Experiment 7 use 100.
+Experiments 1-5, 7, 8 and the hyperparameter comparison have been re-run with the fixed code over 3 seeds (below). Experiment 6 (blindness probability) is answered by the robustness test, which evaluates trained policies on separate episodes across blindness probabilities. The VMAS scenarios experiment has been re-run too, with a no-blindness control per scenario. Most re-runs keep the original 25 training iterations, at which most reward curves are still rising; the robustness test and Experiment 7 use 100.
 
 The reward rescaling in the blindness-probability and blind-duration plots is applied for display only, so those curves cannot be compared directly across settings.
 
@@ -211,6 +211,27 @@ The original runs found that 5–7 agents are optimal, with 10 agents doing wors
 - **Two agents don't learn the task within 25 iterations**, with or without blindness, so their share kept isn't meaningful.
 
 To reproduce: `python experiments/run_agents.py . <seed> experiments/agents_seed<seed>.json` for each seed (about 35 minutes per seed on one CPU core), merge the seed files into `experiments/exp8_agents_results.json`, then `python experiments/plot_exp8.py`.
+
+### VMAS scenarios re-run
+
+The original experiment trained the one-agent blindness setting (1–10 steps, probability 0.1) on five VMAS scenarios, without a no-blindness control, so it couldn't separate the cost of blindness from how hard each scenario is. The re-run trains each scenario with and without blindness, 3 seeds each, with the default settings and 25 iterations. Two details the original missed: `give_way` and `ball_passage` always have 2 agents and `multi_give_way` 4, whatever `n_agents` is set to.
+
+| Scenario | Agents | No blindness | With blindness | Learned in 25 iterations? |
+|---|---|---|---|---|
+| balance | 3 | 43.8 ± 10.9 | 21.3 ± 7.6 | Yes |
+| give_way | 2 | 3.97 ± 0.05 | 3.66 ± 0.01 | Yes |
+| multi_give_way | 4 | −1.42 ± 3.17 | 4.11 ± 2.07 | Partly, unstable |
+| wheel | 3 | −9.21 ± 0.57 | −9.29 ± 0.24 | No |
+| ball_passage | 2 | −0.01 ± 0.02 | 0.03 ± 0.03 | No |
+
+![Final reward per scenario with and without blindness](experiments/scenarios.png)
+
+- **The blindness transforms work in every scenario.** They run without errors and train in all five.
+- **Where agents learn, blindness costs them, by very different amounts.** Balance loses about half its reward; give_way loses 8%, a small effect but consistent across seeds.
+- **wheel and ball_passage don't learn at all in 25 iterations**, with or without blindness: reward barely moves from the first iteration. They say nothing about blindness until they're trained longer or tuned.
+- **multi_give_way is too unstable to call.** The no-blindness runs ranged from −5 to +1 across seeds.
+
+To reproduce: `python experiments/run_scenarios.py . <seed> <out.json> <scenario> <none|one>` for each scenario, condition and seed, then `python experiments/plot_scenarios.py <folder of outputs>`. Balance comes from the robustness test's identical runs.
 
 ### Robustness test
 
