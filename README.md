@@ -36,13 +36,13 @@ Implemented six environment transforms that randomly zero out agent observations
 
 ### Key Findings
 
-The findings below come from the original single-seed runs, before the bug fixes described in "Known issues and status". The re-runs and the robustness test (see "Experimental Results") qualify the first three points; the others still need re-running.
+The findings below come from the original single-seed runs, before the bug fixes described in "Known issues and status". The re-runs and the robustness test (see "Experimental Results") qualify all five points.
 
 - **Robustness is learnable**: Confirmed by the robustness test, given enough training. After 100 iterations, policies trained with blindness score as well as the no-blindness policy when nobody is blind, and much better when agents are (see "Robustness test"). After only 25 iterations they were still behind
 - **Hyperparameters matter**: The original runs reported +86% for normalized advantages, clip=0.3, batch=100, epochs=30. The re-run finds a smaller, noisier gain, and that configuration isn't the best one tested (see "Hyperparameter re-run")
 - **Advantage normalization is critical**: Not supported by the re-run. At the experiments' 25 iterations it made no consistent difference to final reward, though it did make seeds agree more (see "Experiment 2 re-run")
-- **Redundancy helps**: 5-7 agents provide optimal balance between redundancy and coordination overhead
-- **Performance thresholds exist**: Systems maintain function up to ~30% blindness probability before sharp degradation
+- **Redundancy helps**: Confirmed by the re-run with a no-blindness control: a 3-agent team loses about half its reward to one blind agent, a 5-agent team about a fifth, and from 7 agents nothing. The original "5-7 agents is optimal" isn't: 10 agents scored highest, with no sign of coordination overhead (see "Experiment 8 re-run")
+- **Performance thresholds exist**: Partly. The threshold depends on how agents go blind: with one agent blind at a time, policies keep most of their reward even at 50% blindness, but when every agent can go blind independently, performance drops sharply from 10-20% (see "Robustness Thresholds")
 
 ## Known issues and status
 
@@ -124,7 +124,7 @@ To reproduce: `python experiments/run_exp1.py . <seed> experiments/norm_seed<see
 - **Clip value**: Optimal at 0.3 (+28% over default 0.2)
 - **Batch size**: Smaller batches (50-100) outperform default 200
 - **Epochs**: Diminishing returns after 30 epochs
-- **Agent count**: 5-7 agents optimal for robustness vs. coordination
+- **Agent count**: 5-7 agents optimal for robustness vs. coordination. *Not supported by the 3-seed re-run; see "Experiment 8 re-run".*
 
 **Configuration reported as best in the original runs:**
 ```python
@@ -152,6 +152,26 @@ The comparison above was re-run with the fixed code: 3 seeds per setup, on the s
 What holds up: every tuned setup beats the original settings on average (+32% for "Best") and varies much less between seeds. What doesn't: the +86% figure, and the claim that batch 100 and 30 epochs are optimal. Going back to batch 200 or to 20 epochs did as well or better, and with 3 seeds the differences between the tuned setups are within noise.
 
 To reproduce: `python experiments/run_tuning.py . <seed> experiments/tuning_seed<seed>.json` for each seed (about 50 minutes per seed on one CPU core), merge the seed files into `experiments/tuning_results.json`, then `python experiments/plot_tuning.py`.
+
+### Experiment 8 re-run: team size
+
+The original runs found that 5–7 agents are optimal, with 10 agents doing worse from coordination overhead. But in the balance scenario more agents also make the task itself easier, so raw reward can't show whether a bigger team copes better with blindness. The re-run trains each team size both with and without blindness (one random agent blinded for 1–10 steps, probability 0.1, the original setting), 3 seeds each:
+
+| Agents | No blindness | With blindness | Share kept |
+|---|---|---|---|
+| 2 | 7.4 ± 19.5 | 13.9 ± 12.2 | (didn't learn in 25 iterations) |
+| 3 | 43.8 ± 10.9 | 21.3 ± 7.6 | 48% |
+| 5 | 76.7 ± 5.0 | 62.4 ± 5.2 | 81% |
+| 7 | 81.5 ± 2.9 | 91.9 ± 3.3 | 113% |
+| 10 | 94.5 ± 8.9 | 95.5 ± 6.4 | 101% |
+
+![Final reward by team size with and without blindness](experiments/exp8_agents.png)
+
+- **Redundancy helps.** The share of reward kept under blindness rises with team size: about half for 3 agents, about four fifths for 5, and all of it from 7. With 7 agents the blinded runs even scored higher, in all 3 seeds.
+- **There's no sweet spot at 5–7.** 10 agents scored highest with and without blindness. Within this range, more agents only helped.
+- **Two agents don't learn the task within 25 iterations**, with or without blindness, so their share kept isn't meaningful.
+
+To reproduce: `python experiments/run_agents.py . <seed> experiments/agents_seed<seed>.json` for each seed (about 35 minutes per seed on one CPU core), merge the seed files into `experiments/exp8_agents_results.json`, then `python experiments/plot_exp8.py`.
 
 ### Robustness test
 
