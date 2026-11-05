@@ -10,6 +10,12 @@ Variants (all 100 iterations, the original PPO settings unless stated):
                  steps (probability 0.1), like env7
   curriculum     the same blindness, but its probability rises from 0 to 0.1
                  over the first 50 iterations, then stays at 0.1
+  plain-none, plain-one, plain-each
+                 no blindness-awareness: trained with no blindness, one-agent or
+                 each-agent blindness (for comparisons on other scenarios)
+  <variant>@<scenario>
+                 any blindness variant above on another VMAS scenario
+                 (default balance), e.g. aware-memory-each@give_way
   stuck:<scenario>:<setting>
                  no blindness, on a scenario that didn't learn with the
                  original settings; <setting> is "long-horizon" (gamma 0.99,
@@ -43,6 +49,9 @@ variant, seed, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 torch.set_num_threads(1)
 cfg = ORIGINAL.with_(n_iters=int(sys.argv[4]) if len(sys.argv) > 4 else 100)
 aware, progress, scenario = "none", None, "balance"
+if "@" in variant:
+    variant, scenario = variant.split("@")
+PLAIN = {"plain-none": "none", "plain-one": "one-steps", "plain-each": "each-steps"}
 
 if variant.startswith("stuck:"):
     _, scenario, setting = variant.split(":")
@@ -50,9 +59,11 @@ if variant.startswith("stuck:"):
     env = make_env(scenario=scenario)
 elif variant in ("aware-flag", "aware-memory", "aware-memory-each"):
     aware = variant.split("-")[1]
-    env = make_env(blindness="each-steps" if variant.endswith("-each") else "one-steps", aware=aware)
+    env = make_env(scenario=scenario, blindness="each-steps" if variant.endswith("-each") else "one-steps", aware=aware)
+elif variant in PLAIN:
+    env = make_env(scenario=scenario, blindness=PLAIN[variant])
 elif variant == "curriculum":
-    env = make_env(blindness="one-steps", blind_prob=0.0)
+    env = make_env(scenario=scenario, blindness="one-steps", blind_prob=0.0)
     blindness = env.transform  # the outermost transform is the blindness
 
     def progress(i, reward):
@@ -64,13 +75,14 @@ torch.manual_seed(seed)
 env.set_seed(seed)
 start = time.time()
 result = train(env, cfg, progress=progress)
-record = {"variant": variant, "seed": seed, "settings": cfg.to_dict(), "train_rewards": result.rewards,
+record = {"variant": variant, "scenario": scenario, "seed": seed, "settings": cfg.to_dict(), "train_rewards": result.rewards,
           "train_minutes": (time.time() - start) / 60}
 if not variant.startswith("stuck:"):
     record["eval"] = {
         label: {
             str(p): evaluate(result.policy, lambda kind=kind, p=p: make_env(
-                blindness=kind if p > 0 else "none", blind_prob=p, aware=aware), seed=1000 + seed)
+                scenario=scenario, blindness=kind if p > 0 else "none", blind_prob=p, aware=aware),
+                seed=1000 + seed)
             for p in EVAL_PROBS
         }
         for label, kind in EVAL_TYPES.items()
