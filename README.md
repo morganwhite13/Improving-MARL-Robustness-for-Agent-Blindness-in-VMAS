@@ -334,6 +334,31 @@ python "MARL Robustness for Agent Blindness in VMAS.py"
 # and generate performance plots automatically
 ```
 
+### Using the `marl_blindness` package
+
+The training code is also available as a package, so one setting can be trained and evaluated without running every experiment in the script. With the same settings and seed it reproduces the script's results exactly (a test checks this).
+
+```bash
+# Train with one agent blinded for 1-10 steps (probability 0.1), save the policy
+python -m marl_blindness train --blindness one-steps --preset tuned --iters 100 --seed 0 \
+    --out run.json --save-policy policy.pt
+
+# Evaluate it on fresh episodes when every agent can go blind
+python -m marl_blindness evaluate policy.pt --blindness each-steps --probs 0 0.1 0.2
+```
+
+```python
+import torch
+from marl_blindness import TUNED, evaluate, make_env, train
+
+env = make_env(blindness="one-steps")
+torch.manual_seed(0); env.set_seed(0)
+result = train(env, TUNED.with_(n_iters=100))
+score = evaluate(result.policy, lambda: make_env(blindness="each-steps", blind_prob=0.2), seed=1000)
+```
+
+Presets: `original` is the script's settings; `tuned` is the best configuration from the hyperparameter re-run (clip 0.3, 30 epochs), which scored 55.6 ± 1.8 against 21.3 ± 7.6 for `original` after 25 iterations, for 1.5× the gradient steps. Blindness kinds: `none`, `one-every-step`, `all-every-step`, `one`, `each`, `one-steps`, `each-steps`.
+
 ### Training Custom Scenarios
 
 ```python
@@ -411,9 +436,11 @@ Critic Network:
 ```
 Improving-MARL-Robustness-for-Agent-Blindness-in-VMAS/
 ├── MARL Robustness for Agent Blindness in VMAS.py   # Experiments and MAPPO training
-├── blindness.py                                     # Blindness transforms
+├── marl_blindness/                                  # Package: config presets, environments, training, evaluation, CLI
+├── blindness.py                                     # Re-exports marl_blindness/blindness.py for existing imports
 ├── tests/test_blindness.py                          # Tests for the transforms
 ├── tests/test_experiments.py                        # Every plot script runs on the committed results
+├── tests/test_package.py                            # The package reproduces the script; CLI, save and load
 ├── experiments/                                     # Re-runs and robustness test: scripts, results, plots
 ├── .github/workflows/tests.yml                      # Runs the tests in CI
 ├── README.md                                        # This file
