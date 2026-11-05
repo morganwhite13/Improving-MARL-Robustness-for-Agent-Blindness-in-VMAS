@@ -8,13 +8,10 @@ Pass "norm" to train with advantage normalization instead, the other half of
 Experiment 2 (normalization on vs off, across the same scenarios).
 """
 import json, os, sys, time
+from common import load_training_script
 repo, seed, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 norm = len(sys.argv) > 4 and sys.argv[4] == "norm"
-sys.path.insert(0, repo)
-src = open(os.path.join(repo, "MARL Robustness for Agent Blindness in VMAS.py"), encoding="utf-8").read().replace("\r\n", "\n")
-src = src[: src.index("#Experiment 1")]
-ns = {"__name__": "exp1"}
-exec(compile(src, "vmas_script", "exec"), ns)
+ns = load_training_script(repo, "exp1")
 
 import torch
 torch.set_num_threads(1)

@@ -6,12 +6,9 @@ train_environment_variables, unchanged), then trains each setup below on env6
 Usage: python experiments/run_tuning.py . <seed> experiments/tuning_seed<seed>.json
 """
 import json, os, sys, time
+from common import load_training_script
 repo, seed, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
-sys.path.insert(0, repo)
-src = open(os.path.join(repo, "MARL Robustness for Agent Blindness in VMAS.py"), encoding="utf-8").read().replace("\r\n", "\n")
-src = src[: src.index("#Experiment 1")]
-ns = {"__name__": "tuning"}
-exec(compile(src, "vmas_script", "exec"), ns)
+ns = load_training_script(repo, "tuning")
 
 SETUPS = {
     "Original": dict(norm=False, clipVal=0.2, batchSize=200, numEpochs=20),

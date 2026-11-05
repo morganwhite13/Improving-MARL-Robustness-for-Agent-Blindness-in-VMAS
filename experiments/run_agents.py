@@ -11,35 +11,20 @@ blindness; the share of the no-blindness reward kept can.
 Usage: python experiments/run_agents.py . <seed> experiments/agents_seed<seed>.json [n_iters]
 """
 import json, os, sys, time
+from common import load_training_script, make_env
 repo, seed, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 n_iters = int(sys.argv[4]) if len(sys.argv) > 4 else None
-sys.path.insert(0, repo)
-src = open(os.path.join(repo, "MARL Robustness for Agent Blindness in VMAS.py"), encoding="utf-8").read().replace("\r\n", "\n")
-src = src[: src.index("#Experiment 1")]
-if n_iters is not None:
-    assert src.count("\nn_iters = 25 ") == 1
-    src = src.replace("\nn_iters = 25 ", f"\nn_iters = {n_iters} ")
-ns = {"__name__": "agents"}
-exec(compile(src, "vmas_script", "exec"), ns)
+ns = load_training_script(repo, "agents", n_iters)
 
 import torch
-from torchrl.envs import RewardSum, TransformedEnv
-from torchrl.envs.libs.vmas import VmasEnv
 from blindness import BlindOneRandomAgentIfProbabilityForJSteps
 
 torch.set_num_threads(1)
 TEAM_SIZES = [2, 3, 5, 7, 10]
 
 
-def make_env(n_agents, blind):
-    base = VmasEnv(
-        scenario=ns["scenario_name"], num_envs=ns["num_vmas_envs"], continuous_actions=True,
-        max_steps=ns["max_steps"], device=ns["vmas_device"], n_agents=n_agents,
-    )
-    env = TransformedEnv(base, RewardSum(in_keys=[base.reward_key], out_keys=[("agents", "episode_reward")]))
-    if blind:
-        env = TransformedEnv(env, BlindOneRandomAgentIfProbabilityForJSteps(base.n_agents, 0.1, 10))
-    return env
+def one_agent_blindness(n_agents):
+    return BlindOneRandomAgentIfProbabilityForJSteps(n_agents, 0.1, 10)
 
 
 results = json.load(open(out)) if os.path.exists(out) else {}
@@ -49,7 +34,7 @@ for n in TEAM_SIZES:
         if key in results:
             continue
         torch.manual_seed(seed)
-        env = make_env(n, blind)
+        env = make_env(ns, n_agents=n, blindness=one_agent_blindness if blind else None)
         env.set_seed(seed)
         t = time.time()
         rewards, _ = ns["train_environment_variables"](env, key)

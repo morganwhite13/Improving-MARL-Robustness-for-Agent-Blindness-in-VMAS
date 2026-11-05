@@ -15,21 +15,12 @@ Usage: python experiments/run_robustness.py . <seed> experiments/robustness_seed
 n_iters overrides the script's 25 training iterations (e.g. 100 for a longer run).
 """
 import json, os, sys, time
+from common import evaluate, load_training_script, make_env
 repo, seed, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 n_iters = int(sys.argv[4]) if len(sys.argv) > 4 else None
-sys.path.insert(0, repo)
-src = open(os.path.join(repo, "MARL Robustness for Agent Blindness in VMAS.py"), encoding="utf-8").read().replace("\r\n", "\n")
-src = src[: src.index("#Experiment 1")]
-if n_iters is not None:
-    assert src.count("\nn_iters = 25 ") == 1
-    src = src.replace("\nn_iters = 25 ", f"\nn_iters = {n_iters} ")
-ns = {"__name__": "robustness"}
-exec(compile(src, "vmas_script", "exec"), ns)
+ns = load_training_script(repo, "robustness", n_iters)
 
 import torch
-from torchrl.envs import RewardSum, TransformedEnv
-from torchrl.envs.libs.vmas import VmasEnv
-from torchrl.envs.utils import ExplorationType, set_exploration_type
 from blindness import BlindOneRandomAgentIfProbabilityForJSteps, BlindRandomAgentsIfProbabilityForJSteps
 
 torch.set_num_threads(1)
@@ -47,30 +38,8 @@ EVAL_ROLLOUTS = 3  # x 30 parallel environments x 200 steps each
 
 
 def eval_env(transform_cls, prob):
-    base = VmasEnv(
-        scenario=ns["scenario_name"], num_envs=ns["num_vmas_envs"], continuous_actions=True,
-        max_steps=ns["max_steps"], device=ns["vmas_device"], n_agents=ns["n_agents"],
-    )
-    env = TransformedEnv(base, RewardSum(in_keys=[base.reward_key], out_keys=[("agents", "episode_reward")]))
-    if prob > 0:
-        env = TransformedEnv(env, transform_cls(base.n_agents, prob, 10))
-    return env
-
-
-def evaluate(policy, transform_cls, prob, eval_seed):
-    """Mean episode reward over EVAL_ROLLOUTS full episodes in every parallel environment."""
-    torch.manual_seed(eval_seed)
-    env = eval_env(transform_cls, prob)
-    env.set_seed(eval_seed)
-    scores = []
-    with torch.no_grad(), set_exploration_type(ExplorationType.DETERMINISTIC):
-        for _ in range(EVAL_ROLLOUTS):
-            td = env.rollout(ns["max_steps"], policy=policy, break_when_any_done=False)
-            # Average over every episode that ended (some end early), as the training metric does
-            ep_reward = td.get(("next", "agents", "episode_reward"))
-            done = td.get(("next", "done")).unsqueeze(-1).expand(ep_reward.shape)
-            scores.append(ep_reward[done].mean().item())
-    return sum(scores) / len(scores)
+    """Builder for a fresh evaluation environment with blind spells of up to 10 steps at probability prob."""
+    return lambda: make_env(ns, blindness=(lambda n: transform_cls(n, prob, 10)) if prob > 0 else None)
 
 
 results = json.load(open(out)) if os.path.exists(out) else {}
@@ -82,7 +51,7 @@ for name, env in TRAIN.items():
     t = time.time()
     rewards, policy = ns["train_environment_variables"](env, name)
     evals = {
-        etype: {str(p): evaluate(policy, cls, p, eval_seed=1000 + seed) for p in EVAL_PROBS}
+        etype: {str(p): evaluate(ns, policy, eval_env(cls, p), 1000 + seed, EVAL_ROLLOUTS) for p in EVAL_PROBS}
         for etype, cls in EVAL_TYPES.items()
     }
     results[name] = {"train_rewards": [float(r) for r in rewards], "eval": evals, "minutes": (time.time() - t) / 60}
