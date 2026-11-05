@@ -357,7 +357,9 @@ result = train(env, TUNED.with_(n_iters=100))
 score = evaluate(result.policy, lambda: make_env(blindness="each-steps", blind_prob=0.2), seed=1000)
 ```
 
-Presets: `original` is the script's settings; `tuned` is the best configuration from the hyperparameter re-run (clip 0.3, 30 epochs), which scored 55.6 ± 1.8 against 21.3 ± 7.6 for `original` after 25 iterations, for 1.5× the gradient steps. Blindness kinds: `none`, `one-every-step`, `all-every-step`, `one`, `each`, `one-steps`, `each-steps`.
+Presets: `original` is the script's settings; `tuned` is the best configuration from the hyperparameter re-run (clip 0.3, 30 epochs), which scored 55.6 ± 1.8 against 21.3 ± 7.6 for `original` after 25 iterations. But a `tuned` iteration takes about 1.65× as long, so for a fixed amount of compute **`original` with more iterations is better**: given the same wall-clock time it reached 63.0 against 49.4 after 7 minutes, and a higher learning rate (1e-3) was worse than both (`experiments/run_efficiency.py`, plot below).
+
+![Training reward against wall-clock minutes for four settings](experiments/efficiency.png) Blindness kinds: `none`, `one-every-step`, `all-every-step`, `one`, `each`, `one-steps`, `each-steps`.
 
 ### Training Custom Scenarios
 

@@ -17,6 +17,7 @@ EXPERIMENTS = os.path.join(os.path.dirname(__file__), "..", "experiments")
 # (script, arguments, plot it writes)
 PLOTS = [
     ("plot_exp1.py", [], "exp1_rewards.png"),
+    ("plot_efficiency.py", [], "efficiency.png"),
     ("plot_exp2.py", [], "exp2_norm.png"),
     ("plot_tuning.py", [], "tuning_rewards.png"),
     ("plot_sweep.py", [], "sweep.png"),

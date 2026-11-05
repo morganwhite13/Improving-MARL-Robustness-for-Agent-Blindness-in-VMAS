@@ -1,8 +1,10 @@
 """Training settings.
 
 TrainConfig's defaults are the original training script's, so results match
-it exactly. TUNED is the best configuration the 3-seed re-runs measured
-(see the README's hyperparameter re-run).
+it exactly. TUNED is the best configuration the 3-seed re-runs measured for a
+fixed number of iterations (see the README's hyperparameter re-run). For a
+fixed amount of compute, ORIGINAL with more iterations does better: TUNED's
+iterations take about 1.65x as long (experiments/efficiency_results.json).
 """
 from dataclasses import asdict, dataclass, replace
 
@@ -42,8 +44,9 @@ class TrainConfig:
 
 ORIGINAL = TrainConfig()
 
-# 55.6 ± 1.8 vs 21.3 ± 7.6 for ORIGINAL (one agent blinded for 1-10 steps,
-# 25 iterations, 3 seeds); 1.5x the gradient steps of ORIGINAL per iteration
+# 55.6 ± 1.8 vs 21.3 ± 7.6 for ORIGINAL after 25 iterations (one agent blinded
+# for 1-10 steps, 3 seeds), but each iteration does 1.5x the gradient steps.
+# Given the same wall-clock time, ORIGINAL reached 63.0 vs 49.4 at 7 minutes.
 TUNED = TrainConfig(clip_epsilon=0.3, num_epochs=30)
 
 PRESETS = {"original": ORIGINAL, "tuned": TUNED}
