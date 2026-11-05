@@ -36,11 +36,11 @@ Implemented six environment transforms that randomly zero out agent observations
 
 ### Key Findings
 
-The findings below come from the original single-seed runs, before the bug fixes described in "Known issues and status". The re-runs and the robustness test (see "Experimental Results") qualify the first two points; the others still need re-running.
+The findings below come from the original single-seed runs, before the bug fixes described in "Known issues and status". The re-runs and the robustness test (see "Experimental Results") qualify the first three points; the others still need re-running.
 
 - **Robustness is learnable**: Confirmed by the robustness test, given enough training. After 100 iterations, policies trained with blindness score as well as the no-blindness policy when nobody is blind, and much better when agents are (see "Robustness test"). After only 25 iterations they were still behind
 - **Hyperparameters matter**: The original runs reported +86% for normalized advantages, clip=0.3, batch=100, epochs=30. The re-run finds a smaller, noisier gain, and that configuration isn't the best one tested (see "Hyperparameter re-run")
-- **Advantage normalization is critical**: Essential for handling variance when agents experience different observation states
+- **Advantage normalization is critical**: Not supported by the re-run. At the experiments' 25 iterations it made no consistent difference to final reward, though it did make seeds agree more (see "Experiment 2 re-run")
 - **Redundancy helps**: 5-7 agents provide optimal balance between redundancy and coordination overhead
 - **Performance thresholds exist**: Systems maintain function up to ~30% blindness probability before sharp degradation
 
@@ -86,6 +86,26 @@ These rewards are on a different scale from the original table below (about 50 r
 
 To reproduce: `python experiments/run_exp1.py . <seed> experiments/seed<seed>.json` for each seed (about 45 minutes per seed on one CPU core), then `python experiments/plot_exp1.py`. The results used here are in `experiments/exp1_results.json`.
 
+### Experiment 2 re-run: advantage normalization
+
+The original runs concluded that advantage normalization is essential under blindness (+40–60 reward). Experiment 1's re-run above trained with normalization off; repeating it with normalization on, with the same seeds and settings otherwise, tests that claim. Final reward, mean ± std over 3 seeds:
+
+| Scenario | Normalization off | Normalization on |
+|---|---|---|
+| Normal (no blindness) | 49.2 ± 4.8 | 43.8 ± 10.9 |
+| Blind 1 random agent every step | 5.5 ± 12.9 | 16.6 ± 6.0 |
+| Blind all agents every step | −11.8 ± 1.9 | −10.8 ± 2.4 |
+| Blind 1 random agent with probability 0.1 | 40.5 ± 11.6 | 36.8 ± 8.0 |
+| Blind each agent with probability 0.1 | 37.8 ± 15.6 | 33.2 ± 6.3 |
+| Blind 1 random agent for 1–10 steps | 34.2 ± 16.1 | 21.3 ± 7.6 |
+| Blind each agent for 1–10 steps | 10.7 ± 9.2 | −0.2 ± 5.9 |
+
+![Final reward per scenario with normalization off and on, mean ± std with each seed shown](experiments/exp2_norm.png)
+
+Normalization isn't essential here. With it on, the mean is lower in 5 of 7 scenarios, and the per-seed differences mostly change sign. Its one consistent gain is with one agent blinded every step (+11, better in all 3 seeds). What it does do is make seeds agree more: the spread is smaller in 5 of 7 scenarios. Repeated runs reproduce exactly (the no-blindness, normalization-on results match the robustness test's), so these differences are between seeds, not run-to-run noise.
+
+To reproduce: `python experiments/run_exp1.py . <seed> experiments/norm_seed<seed>.json norm` for each seed, merge the seed files into `experiments/exp2_norm_results.json`, then `python experiments/plot_exp2.py`.
+
 ### Original results (before the fixes)
 
 | Blindness Scenario | Final Reward | Performance vs. Baseline |
@@ -100,7 +120,7 @@ To reproduce: `python experiments/run_exp1.py . <seed> experiments/seed<seed>.js
 ### Hyperparameter Optimization
 
 **Impact of Key Parameters:**
-- **Normalization**: Essential (+40-60 reward improvement across scenarios)
+- **Normalization**: Essential (+40-60 reward improvement across scenarios). *Not supported by the 3-seed re-run; see "Experiment 2 re-run".*
 - **Clip value**: Optimal at 0.3 (+28% over default 0.2)
 - **Batch size**: Smaller batches (50-100) outperform default 200
 - **Epochs**: Diminishing returns after 30 epochs
