@@ -23,6 +23,7 @@ PLOTS = [
     ("plot_duration.py", [], "duration.png"),
     ("plot_exp8.py", [], "exp8_agents.png"),
     ("plot_scenarios.py", [], "scenarios.png"),
+    ("plot_scenarios.py", ["--100"], "scenarios_100iters.png"),
     ("plot_robustness.py", [], "robustness.png"),
     ("plot_robustness.py", ["robustness_100iters_results.json"], "robustness_100iters.png"),
 ]

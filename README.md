@@ -25,7 +25,7 @@ A Multi-Agent Reinforcement Learning research project investigating how cooperat
 | Is advantage normalization essential? | No: it made seeds agree more, not scores higher | [Experiment 2](#experiment-2-re-run-advantage-normalization) |
 | Which PPO settings help? | Clip 0.3, smaller minibatches and more epochs; the defaults undertrain in 25 iterations | [Experiments 3–5](#experiments-3-5-re-run-clip-value-minibatch-size-epochs) |
 | Does tuning give +86%? | About +32%, and the reported best combination isn't the best | [Hyperparameter re-run](#hyperparameter-re-run) |
-| Does it carry over to other VMAS scenarios? | Blindness works in all five; where agents learn, it costs between 8% and half the reward | [Scenarios](#vmas-scenarios-re-run) |
+| Does it carry over to other VMAS scenarios? | Blindness works in all five. Where agents learn, it costs 6–16% after 100 iterations (more at 25, mostly from slower learning); wheel and ball_passage don't learn even then | [Scenarios](#vmas-scenarios-re-run) |
 
 
 ### Real-World Applications
@@ -245,7 +245,23 @@ The original experiment trained the one-agent blindness setting (1–10 steps, p
 - **wheel and ball_passage don't learn at all in 25 iterations**, with or without blindness: reward barely moves from the first iteration. They say nothing about blindness until they're trained longer or tuned.
 - **multi_give_way is too unstable to call.** The no-blindness runs ranged from −5 to +1 across seeds.
 
-To reproduce: `python experiments/run_scenarios.py . <seed> <out.json> <scenario> <none|one>` for each scenario, condition and seed, then `python experiments/plot_scenarios.py <folder of outputs>`. Balance comes from the robustness test's identical runs.
+**With 100 training iterations** (4× longer, same seeds):
+
+| Scenario | Agents | No blindness | With blindness | Cost of blindness |
+|---|---|---|---|---|
+| balance | 3 | 64.0 ± 1.0 | 60.5 ± 2.3 | 6% (52% at 25 iterations) |
+| give_way | 2 | 4.45 ± 0.39 | 3.72 ± 0.07 | 16% (8% at 25 iterations) |
+| multi_give_way | 4 | 0.19 ± 3.09 | 2.89 ± 0.48 | None; the blinded runs are higher and steadier, but the no-blindness runs vary too much to call |
+| wheel | 3 | −8.57 ± 0.61 | −8.62 ± 0.34 | None measurable; barely learns either way |
+| ball_passage | 2 | 0.01 ± 0.04 | −0.01 ± 0.02 | None measurable; doesn't learn |
+
+![Final reward per scenario with and without blindness, after 100 iterations](experiments/scenarios_100iters.png)
+
+- **Most of balance's cost at 25 iterations was slower learning.** Trained 4× longer, the blinded team gets within 6% of the unblinded one, which matches the robustness test.
+- **In give_way the cost grows with training** (8% → 16%): the unblinded team keeps improving and the blinded one doesn't.
+- **wheel and ball_passage don't learn even with 4× the training.** Their rewards are sparse, so they likely need different settings or reward shaping rather than more iterations, before they can show anything about blindness.
+
+To reproduce: `python experiments/run_scenarios.py . <seed> <out.json> <scenario> <none|one> [n_iters]` for each scenario, condition and seed, then `python experiments/plot_scenarios.py [--100] <folder of outputs>`. Balance comes from the robustness test's identical runs.
 
 ### Robustness test
 
