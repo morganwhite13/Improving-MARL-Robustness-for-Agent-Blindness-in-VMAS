@@ -12,7 +12,21 @@ A Multi-Agent Reinforcement Learning research project investigating how cooperat
 
 **Key Innovation:** Six custom blindness scenarios implemented as VMAS environment transforms, ranging from simple single-step occlusions to complex multi-agent, variable-duration sensory failures.
 
-**Results:** Re-run over 3 seeds with the fixed code, training without blindness scores highest, short occasional blindness costs relatively little, and blinding every agent prevents learning. Tuned PPO settings (advantage normalization, clip 0.3, more epochs) beat the original settings on average and vary far less between seeds, though the gain is smaller than the original single-seed +86%. A robustness test (train with or without blindness, evaluate on separate episodes under blindness) shows that **training with blindness makes the team markedly more robust, once it has trained long enough**: after 100 iterations, a team trained with each-agent blindness keeps 86% of its reward at 10% blindness, against 43% for a team trained without it. At 25 iterations it hadn't caught up yet.
+**Results:** Every experiment has been re-run with the fixed code over 3 seeds, and a new robustness test evaluates trained policies on separate episodes. The headline: **training with blindness makes the team markedly more robust, once it has trained long enough.** After 100 iterations, a team trained with each-agent blindness keeps 86% of its reward at 10% blindness, against 43% for a team trained without it, and loses nothing when no one is blind. At 25 iterations it hadn't caught up yet.
+
+### Results at a glance
+
+| Question | Answer (3 seeds, fixed code) | Details |
+|---|---|---|
+| Does training with blindness make a team more robust? | Yes, after 100 iterations: 86% vs 43% of reward kept at 10% blindness. After 25 iterations, no | [Robustness test](#robustness-test) |
+| How much does blindness cost? | Depends on how agents go blind: one at a time costs little, all at once prevents learning | [Experiment 1](#experiment-1-re-run-with-the-fixed-code) |
+| Do longer blind spells hurt? | Steadily; steeply when every agent can go blind (22% of reward kept with spells up to 20 steps) | [Experiment 7](#experiment-7-re-run-blind-spell-length) |
+| Do bigger teams cope better? | Yes: one blind agent costs 3 agents about half their reward, 7 agents nothing. No 5–7 sweet spot | [Experiment 8](#experiment-8-re-run-team-size) |
+| Is advantage normalization essential? | No: it made seeds agree more, not scores higher | [Experiment 2](#experiment-2-re-run-advantage-normalization) |
+| Which PPO settings help? | Clip 0.3, smaller minibatches and more epochs; the defaults undertrain in 25 iterations | [Experiments 3–5](#experiments-3-5-re-run-clip-value-minibatch-size-epochs) |
+| Does tuning give +86%? | About +32%, and the reported best combination isn't the best | [Hyperparameter re-run](#hyperparameter-re-run) |
+| Does it carry over to other VMAS scenarios? | Blindness works in all five; where agents learn, it costs between 8% and half the reward | [Scenarios](#vmas-scenarios-re-run) |
+
 
 ### Real-World Applications
 
