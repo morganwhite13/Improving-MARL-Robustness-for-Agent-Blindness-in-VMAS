@@ -397,6 +397,7 @@ Improving-MARL-Robustness-for-Agent-Blindness-in-VMAS/
 ├── MARL Robustness for Agent Blindness in VMAS.py   # Experiments and MAPPO training
 ├── blindness.py                                     # Blindness transforms
 ├── tests/test_blindness.py                          # Tests for the transforms
+├── tests/test_experiments.py                        # Every plot script runs on the committed results
 ├── experiments/                                     # Re-runs and robustness test: scripts, results, plots
 ├── .github/workflows/tests.yml                      # Runs the tests in CI
 ├── README.md                                        # This file
