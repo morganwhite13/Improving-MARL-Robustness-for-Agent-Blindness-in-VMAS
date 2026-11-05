@@ -5,6 +5,9 @@ Variants (all 100 iterations, the original PPO settings unless stated):
   aware-flag     one random agent blinded for 1-10 steps (probability 0.1),
                  and each agent's observation carries a "blind" flag
   aware-memory   as aware-flag, and a blind agent also keeps its last seen observation
+  aware-memory-each
+                 as aware-memory, but each agent independently blinded for 1-10
+                 steps (probability 0.1), like env7
   curriculum     the same blindness, but its probability rises from 0 to 0.1
                  over the first 50 iterations, then stays at 0.1
   stuck:<scenario>:<setting>
@@ -45,9 +48,9 @@ if variant.startswith("stuck:"):
     _, scenario, setting = variant.split(":")
     cfg = cfg.with_(**STUCK_SETTINGS[setting])
     env = make_env(scenario=scenario)
-elif variant in ("aware-flag", "aware-memory"):
+elif variant in ("aware-flag", "aware-memory", "aware-memory-each"):
     aware = variant.split("-")[1]
-    env = make_env(blindness="one-steps", aware=aware)
+    env = make_env(blindness="each-steps" if variant.endswith("-each") else "one-steps", aware=aware)
 elif variant == "curriculum":
     env = make_env(blindness="one-steps", blind_prob=0.0)
     blindness = env.transform  # the outermost transform is the blindness

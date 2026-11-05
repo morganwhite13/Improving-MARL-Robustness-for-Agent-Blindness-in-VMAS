@@ -323,18 +323,20 @@ Three ideas, each trained for 100 iterations with one random agent blinded for 1
 | **One-agent blindness + flag and memory** | **70.2** | **67.6** | **63.1** | **41.1** |
 | One-agent blindness + flag only | 52.9 | 43.2 | 11.8 | −1.6 |
 | One-agent blindness, curriculum | 36.5 | 20.5 | 1.3 | −6.5 |
+| **Each-agent blindness + flag and memory** | **75.8** | **74.7** | **70.7** | **51.6** |
 
-Mean episode reward over 3 seeds; every policy scores 70–72 with no blindness.
+Mean episode reward over 3 seeds. With no blindness, every policy scores 70–73, except the last one, which scores 78.
 
 ![Evaluation reward against blindness probability for each variant](experiments/variants.png)
 
 - **Memory makes the team far more robust.** With a blind agent keeping its last real observation, the team keeps 97% of its reward when one agent is blind half the time. When every agent can go blind 20% of the time, it scores 63 against at most 43 for any plain policy, even though it only trained with one agent blinded at a time. It costs nothing when no one is blind.
+- **Memory with each-agent blindness training is best of all.** Trained with every agent able to go blind, the memory policy keeps 96% of its reward at each-agent p = 0.1 and 90% at p = 0.2, and also has the highest mean reward with no blindness (78 ± 5 vs 70–73), though with 3 seeds that last gap is within the spread.
 - **A flag alone doesn't help.** Knowing you're blind, with nothing to act on, does slightly worse than plain blindness training.
 - **The curriculum hurts.** Ramping blindness up means less blindness during training, and robustness falls to about the no-blindness policy's level.
 
 **The scenarios that didn't learn** (wheel, ball_passage) still don't with a longer horizon (`gamma` 0.99, GAE λ 0.95) or more exploration (entropy 0.01), 100 iterations, 2 seeds each. They likely need reward shaping or a different setup.
 
-To reproduce: `python experiments/run_variant.py <variant> <seed> <out.json>` (variants: `aware-flag`, `aware-memory`, `curriculum`, `stuck:<scenario>:<setting>`), merge into `experiments/variants_results.json`, then `python experiments/plot_variants.py`.
+To reproduce: `python experiments/run_variant.py <variant> <seed> <out.json>` (variants: `aware-flag`, `aware-memory`, `aware-memory-each`, `curriculum`, `stuck:<scenario>:<setting>`), merge into `experiments/variants_results.json`, then `python experiments/plot_variants.py`.
 
 ## 🚀 Getting Started
 

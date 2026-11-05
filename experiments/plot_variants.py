@@ -21,10 +21,12 @@ probs = ["0.0", "0.05", "0.1", "0.2", "0.3", "0.5"]
 series = {
     "trained: no blindness": [robust[s]["No blindness"]["eval"] for s in robust],
     "trained: one-agent blindness": [robust[s]["One agent, 1-10 steps"]["eval"] for s in robust],
+    "trained: each-agent blindness": [robust[s]["Each agent, 1-10 steps"]["eval"] for s in robust],
 }
 for name, label in [("aware-flag", "one-agent blindness + blind flag"),
                     ("aware-memory", "one-agent blindness + flag and memory"),
-                    ("curriculum", "one-agent blindness, curriculum")]:
+                    ("curriculum", "one-agent blindness, curriculum"),
+                    ("aware-memory-each", "each-agent blindness + flag and memory")]:
     series["trained: " + label] = [r["eval"] for r in variants if r["variant"] == name]
 
 fig, axes = plt.subplots(1, 2, figsize=(12, 4.8), sharey=True)
