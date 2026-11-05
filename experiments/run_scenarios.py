@@ -8,13 +8,17 @@ used), for one seed. Reward scales differ between scenarios, so the
 no-blindness run is the control each blindness run is compared with.
 Some scenarios fix their own number of agents and ignore n_agents.
 
-Usage: python experiments/run_scenarios.py . <seed> <out.json> <scenario> <none|one>
+Usage: python experiments/run_scenarios.py . <seed> <out.json> <scenario> <none|one> [n_iters]
 """
 import json, os, sys, time, warnings
 repo, seed, out, scenario, cond = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4], sys.argv[5]
+n_iters = int(sys.argv[6]) if len(sys.argv) > 6 else None
 sys.path.insert(0, repo)
 src = open(os.path.join(repo, "MARL Robustness for Agent Blindness in VMAS.py"), encoding="utf-8").read().replace("\r\n", "\n")
 src = src[: src.index("#Experiment 1")]
+if n_iters is not None:
+    assert src.count("\nn_iters = 25 ") == 1
+    src = src.replace("\nn_iters = 25 ", f"\nn_iters = {n_iters} ")
 ns = {"__name__": "scenarios"}
 exec(compile(src, "vmas_script", "exec"), ns)
 
@@ -35,6 +39,6 @@ env.set_seed(seed)
 t = time.time()
 rewards, _ = ns["train_environment_variables"](env, f"{scenario}, {cond}")
 rewards = [float(r) for r in rewards]
-json.dump({"seed": seed, "scenario": scenario, "n_agents": base.n_agents, "blind": cond == "one",
+json.dump({"seed": seed, "n_iters": ns["n_iters"], "scenario": scenario, "n_agents": base.n_agents, "blind": cond == "one",
            "rewards": rewards, "final": rewards[-1], "minutes": (time.time() - t) / 60}, open(out, "w"), indent=1)
 print(f"DONE seed={seed} {scenario} {cond}: final={rewards[-1]:.2f} ({(time.time() - t) / 60:.1f} min)", flush=True)
