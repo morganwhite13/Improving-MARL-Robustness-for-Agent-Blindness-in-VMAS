@@ -4,6 +4,7 @@ from collections.abc import Callable
 from torchrl.envs import RewardSum, Transform, TransformedEnv
 from torchrl.envs.libs.vmas import VmasEnv
 
+from .aware import BlindnessAwareObservation
 from .blindness import (
     BlindAllAgentsEveryStep,
     BlindOneRandomAgentEveryStep,
@@ -34,12 +35,14 @@ def make_env(
     blindness: str | Callable[[int], Transform] = "none",
     blind_prob: float = 0.1,
     max_blind_steps: int = 10,
+    aware: str = "none",
     **scenario_kwargs,
 ) -> TransformedEnv:
     """A vectorised VMAS environment with episode rewards summed and optional blindness.
 
     blindness is a name from BLINDNESS, or a function that takes the number of
-    agents and returns a transform.
+    agents and returns a transform. aware adds a "blind" flag to each agent's
+    observation ("flag"), plus its last seen observation while blind ("memory").
 
     Some scenarios (give_way, ball_passage, multi_give_way) fix their own number
     of agents and ignore n_agents; the returned env's n_agents is the real one.
@@ -53,4 +56,6 @@ def make_env(
         env = TransformedEnv(env, blindness(base.n_agents))
     elif BLINDNESS[blindness] is not None:
         env = TransformedEnv(env, BLINDNESS[blindness](base.n_agents, blind_prob, max_blind_steps))
+    if aware != "none":
+        env = TransformedEnv(env, BlindnessAwareObservation(memory=aware == "memory"))
     return env
