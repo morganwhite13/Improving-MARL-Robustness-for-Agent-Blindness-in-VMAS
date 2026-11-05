@@ -11,13 +11,18 @@ train_environment_variables, unchanged), then for one seed:
    (separately seeded, not the training rollouts) at a range of blindness
    probabilities, for both blindness types.
 
-Usage: python experiments/run_robustness.py . <seed> experiments/robustness_seed<seed>.json
+Usage: python experiments/run_robustness.py . <seed> experiments/robustness_seed<seed>.json [n_iters]
+n_iters overrides the script's 25 training iterations (e.g. 100 for a longer run).
 """
 import json, os, sys, time
 repo, seed, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+n_iters = int(sys.argv[4]) if len(sys.argv) > 4 else None
 sys.path.insert(0, repo)
 src = open(os.path.join(repo, "MARL Robustness for Agent Blindness in VMAS.py"), encoding="utf-8").read().replace("\r\n", "\n")
 src = src[: src.index("#Experiment 1")]
+if n_iters is not None:
+    assert src.count("\nn_iters = 25 ") == 1
+    src = src.replace("\nn_iters = 25 ", f"\nn_iters = {n_iters} ")
 ns = {"__name__": "robustness"}
 exec(compile(src, "vmas_script", "exec"), ns)
 

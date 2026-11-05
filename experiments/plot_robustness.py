@@ -1,6 +1,11 @@
-"""Plot experiments/robustness_results.json: evaluation reward vs blindness probability per training condition."""
+"""Plot robustness results: evaluation reward vs blindness probability per training condition.
+
+Usage: python experiments/plot_robustness.py [results.json]  (default: robustness_results.json)
+Writes a PNG with the same name next to the results file.
+"""
 import json
 import os
+import sys
 
 import matplotlib
 matplotlib.use("Agg")
@@ -8,7 +13,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 here = os.path.dirname(os.path.abspath(__file__))
-data = json.load(open(os.path.join(here, "robustness_results.json")))
+results = os.path.join(here, sys.argv[1] if len(sys.argv) > 1 else "robustness_results.json")
+data = json.load(open(results))
 seeds = list(data["seeds"].values())
 trains = list(seeds[0])
 etypes = list(seeds[0][trains[0]]["eval"])
@@ -27,7 +33,9 @@ for ax, etype in zip(axes, etypes):
     ax.grid(alpha=0.3)
 axes[0].set_ylabel("Episode reward (deterministic policy)")
 axes[0].legend(fontsize=8)
-fig.suptitle(f"Robustness: training condition vs blindness at evaluation (mean ± std over {len(seeds)} seeds)")
+iters = "100 training iterations" if "100 iterations" in data["description"] else "25 training iterations"
+fig.suptitle(f"Robustness after {iters}: training condition vs blindness at evaluation (mean ± std over {len(seeds)} seeds)")
 fig.tight_layout()
-fig.savefig(os.path.join(here, "robustness.png"), dpi=120)
-print("wrote", os.path.join(here, "robustness.png"))
+png = results.replace("_results.json", ".png")
+fig.savefig(png, dpi=120)
+print("wrote", png)
