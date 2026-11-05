@@ -3,10 +3,13 @@
 Executes the training script up to "#Experiment 1" (config, environments and
 train_environment_variables, unchanged), then trains every scenario with the
 experiment's own settings (norm=False, defaults otherwise) for one seed.
-Usage: python experiments/run_exp1.py . <seed> experiments/seed<seed>.json
+Usage: python experiments/run_exp1.py . <seed> experiments/seed<seed>.json [norm]
+Pass "norm" to train with advantage normalization instead, the other half of
+Experiment 2 (normalization on vs off, across the same scenarios).
 """
 import json, os, sys, time
 repo, seed, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+norm = len(sys.argv) > 4 and sys.argv[4] == "norm"
 sys.path.insert(0, repo)
 src = open(os.path.join(repo, "MARL Robustness for Agent Blindness in VMAS.py"), encoding="utf-8").read().replace("\r\n", "\n")
 src = src[: src.index("#Experiment 1")]
@@ -22,7 +25,7 @@ for env, desc in ns["environments"]:
     torch.manual_seed(seed)
     env.set_seed(seed)
     t = time.time()
-    rewards, _ = ns["train_environment_variables"](env, desc, norm=False)
+    rewards, _ = ns["train_environment_variables"](env, desc, norm=norm)
     rewards = [float(r) for r in rewards]
     results[desc] = {"rewards": rewards, "final": rewards[-1], "minutes": (time.time() - t) / 60}
     json.dump(results, open(out, "w"), indent=1)
