@@ -12,7 +12,7 @@ A Multi-Agent Reinforcement Learning research project investigating how cooperat
 
 **Key Innovation:** Six custom blindness scenarios implemented as VMAS environment transforms, ranging from simple single-step occlusions to complex multi-agent, variable-duration sensory failures.
 
-**Results:** Re-run over 3 seeds with the fixed code, training without blindness scores highest, short occasional blindness costs relatively little, and blinding every agent prevents learning. Tuned PPO settings (advantage normalization, clip 0.3, more epochs) beat the original settings on average and vary far less between seeds, though the gain is smaller than the original single-seed +86%.
+**Results:** Re-run over 3 seeds with the fixed code, training without blindness scores highest, short occasional blindness costs relatively little, and blinding every agent prevents learning. Tuned PPO settings (advantage normalization, clip 0.3, more epochs) beat the original settings on average and vary far less between seeds, though the gain is smaller than the original single-seed +86%. A robustness test (train with or without blindness, evaluate under blindness) found that training with blindness did not make the team more robust within this training budget: it mostly slowed learning.
 
 ### Real-World Applications
 
@@ -36,9 +36,9 @@ Implemented six environment transforms that randomly zero out agent observations
 
 ### Key Findings
 
-The findings below come from the original single-seed runs, before the bug fixes described in "Known issues and status". The Experiment 1 and hyperparameter re-runs support the first two points (the second only in part); the others still need re-running.
+The findings below come from the original single-seed runs, before the bug fixes described in "Known issues and status". The re-runs and the robustness test (see "Experimental Results") qualify the first two points; the others still need re-running.
 
-- **Robustness is learnable**: Agents develop cooperative strategies that gracefully degrade under partial observability
+- **Robustness is learnable**: The original runs suggested agents develop strategies that degrade gracefully under blindness. The robustness test finds graceful degradation when one agent at a time goes blind, but no benefit from training with blindness at this budget (see "Robustness test")
 - **Hyperparameters matter**: The original runs reported +86% for normalized advantages, clip=0.3, batch=100, epochs=30. The re-run finds a smaller, noisier gain, and that configuration isn't the best one tested (see "Hyperparameter re-run")
 - **Advantage normalization is critical**: Essential for handling variance when agents experience different observation states
 - **Redundancy helps**: 5-7 agents provide optimal balance between redundancy and coordination overhead
@@ -132,6 +132,34 @@ The comparison above was re-run with the fixed code: 3 seeds per setup, on the s
 What holds up: every tuned setup beats the original settings on average (+32% for "Best") and varies much less between seeds. What doesn't: the +86% figure, and the claim that batch 100 and 30 epochs are optimal. Going back to batch 200 or to 20 epochs did as well or better, and with 3 seeds the differences between the tuned setups are within noise.
 
 To reproduce: `python experiments/run_tuning.py . <seed> experiments/tuning_seed<seed>.json` for each seed (about 50 minutes per seed on one CPU core), merge the seed files into `experiments/tuning_results.json`, then `python experiments/plot_tuning.py`.
+
+### Robustness test
+
+The experiments above score each policy on its own training rollouts, in the conditions it was trained in. That can't say whether training *with* blindness makes a team more robust *to* blindness. This test does:
+
+1. Train three policies (3 seeds each, the training function's default settings): with no blindness, with one random agent blinded for 1–10 steps (probability 0.1), and with each agent independently blinded for 1–10 steps (probability 0.1).
+2. Evaluate every policy with deterministic actions on fresh, separately seeded environments, at blindness probabilities from 0 to 0.5, for both kinds of blindness (90 episodes per point).
+
+Mean episode reward ± std over 3 seeds:
+
+| Trained with | Evaluated with | p = 0 | 0.05 | 0.1 | 0.2 | 0.3 | 0.5 |
+|---|---|---|---|---|---|---|---|
+| No blindness | One agent blind | 56.3 ± 12.9 | 53.2 ± 11.1 | 51.6 ± 10.3 | 47.5 ± 9.5 | 44.7 ± 10.4 | 41.1 ± 12.0 |
+| One agent blind | One agent blind | 38.5 ± 12.3 | 40.4 ± 12.6 | 41.3 ± 13.0 | 41.5 ± 13.6 | 39.6 ± 12.8 | 35.9 ± 13.3 |
+| Each agent blind | One agent blind | 15.2 ± 11.3 | 15.5 ± 12.0 | 14.2 ± 11.9 | 12.8 ± 11.1 | 11.5 ± 11.4 | 10.8 ± 10.4 |
+| No blindness | Each agent blind | 56.3 ± 12.9 | 44.8 ± 13.6 | 31.6 ± 17.2 | 8.3 ± 13.7 | 0.1 ± 11.1 | −5.4 ± 7.1 |
+| One agent blind | Each agent blind | 38.5 ± 12.3 | 38.3 ± 12.4 | 30.9 ± 9.0 | 17.6 ± 6.8 | 7.1 ± 2.3 | −2.5 ± 1.6 |
+| Each agent blind | Each agent blind | 15.2 ± 11.3 | 9.6 ± 11.5 | 8.8 ± 11.4 | 4.5 ± 7.7 | 0.2 ± 5.0 | −3.0 ± 5.4 |
+
+![Evaluation reward against blindness probability for each training condition](experiments/robustness.png)
+
+What this shows:
+
+- **Training with blindness didn't make the team more robust at this budget.** The policy trained without blindness scores as high or higher at almost every point. The one exception, frequent each-agent blindness (p ≥ 0.2), favours the one-agent-trained policy, but the seed spreads overlap.
+- **Blindness during training mostly slows learning.** After 25 iterations the blindness-trained policies are still well behind (each-agent training barely learns), so this compares a nearly trained policy with partly trained ones. A longer run, or comparing at equal training reward, is the fairer next test.
+- **One blind agent at a time is survivable; many are not.** With one agent blinded, the no-blindness policy keeps 73% of its reward even at p = 0.5. When each agent can go blind independently, it keeps 56% at p = 0.1 and almost nothing from p = 0.2.
+
+To reproduce: `python experiments/run_robustness.py . <seed> experiments/robustness_seed<seed>.json` for each seed (about 13 minutes per seed on one CPU core), merge the seed files into `experiments/robustness_results.json`, then `python experiments/plot_robustness.py`.
 
 ## 🚀 Getting Started
 
@@ -239,7 +267,7 @@ Improving-MARL-Robustness-for-Agent-Blindness-in-VMAS/
 ├── MARL Robustness for Agent Blindness in VMAS.py   # Experiments and MAPPO training
 ├── blindness.py                                     # Blindness transforms
 ├── tests/test_blindness.py                          # Tests for the transforms
-├── experiments/                                     # Experiment 1 re-run: script, results, plot
+├── experiments/                                     # Re-runs and robustness test: scripts, results, plots
 ├── .github/workflows/tests.yml                      # Runs the tests in CI
 ├── README.md                                        # This file
 ├── LICENSE                                          # MIT License
@@ -267,9 +295,12 @@ The project includes comprehensive experiments across 7 dimensions:
 
 ### Robustness Thresholds
 
-- **P(blind) < 0.2**: Graceful degradation, maintains > 70% performance
-- **P(blind) = 0.3**: Critical threshold, ~59% performance
-- **P(blind) > 0.5**: System failure, < 50% performance
+From the robustness test (policy trained without blindness, share of its unblinded reward kept):
+
+- **One agent blinded at a time (1–10 steps):** 92% at p = 0.1, 79% at p = 0.3, 73% at p = 0.5
+- **Each agent blinded independently (1–10 steps):** 80% at p = 0.05, 56% at p = 0.1, 15% at p = 0.2, about 0% from p = 0.3
+
+The original single-seed runs had reported >70% up to p = 0.2 and a threshold near p = 0.3.
 
 ### Duration Sensitivity
 
