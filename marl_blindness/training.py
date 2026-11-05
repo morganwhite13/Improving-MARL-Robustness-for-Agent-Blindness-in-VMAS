@@ -4,6 +4,7 @@ train() reproduces the script exactly for the same settings and seed (a test
 checks this), including the environment check and short rollout it does
 first, which consume random numbers.
 """
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import torch
@@ -13,20 +14,21 @@ from torchrl.collectors import SyncDataCollector
 from torchrl.data.replay_buffers import ReplayBuffer
 from torchrl.data.replay_buffers.samplers import SamplerWithoutReplacement
 from torchrl.data.replay_buffers.storages import LazyTensorStorage
+from torchrl.envs import EnvBase
 from torchrl.envs.utils import check_env_specs
 from torchrl.modules import MultiAgentMLP, ProbabilisticActor, TanhNormal
 from torchrl.objectives import ClipPPOLoss, ValueEstimators
 
-from .config import TrainConfig
+from .config import ORIGINAL, TrainConfig
 
 
 @dataclass
 class TrainResult:
-    rewards: list  # mean episode reward of each iteration's training rollouts
+    rewards: list[float]  # mean episode reward of each iteration's training rollouts
     policy: ProbabilisticActor
 
 
-def build_policy(env, cfg: TrainConfig, device="cpu"):
+def build_policy(env: EnvBase, cfg: TrainConfig, device: str = "cpu") -> ProbabilisticActor:
     """Decentralised policy: one MLP shared by all agents, each acting on its own observation."""
     net = torch.nn.Sequential(
         MultiAgentMLP(
@@ -42,7 +44,9 @@ def build_policy(env, cfg: TrainConfig, device="cpu"):
         ),
         NormalParamExtractor(),
     )
-    module = TensorDictModule(net, in_keys=[("agents", "observation")], out_keys=[("agents", "loc"), ("agents", "scale")])
+    module = TensorDictModule(
+        net, in_keys=[("agents", "observation")], out_keys=[("agents", "loc"), ("agents", "scale")]
+    )
     return ProbabilisticActor(
         module=module,
         spec=env.unbatched_action_spec,
@@ -59,7 +63,7 @@ def build_policy(env, cfg: TrainConfig, device="cpu"):
     )
 
 
-def build_critic(env, cfg: TrainConfig, device="cpu"):
+def build_critic(env: EnvBase, cfg: TrainConfig, device: str = "cpu") -> TensorDictModule:
     """Centralised critic (MAPPO): each agent's value is computed from all agents' observations."""
     net = MultiAgentMLP(
         n_agent_inputs=env.observation_spec["agents", "observation"].shape[-1],
@@ -75,7 +79,12 @@ def build_critic(env, cfg: TrainConfig, device="cpu"):
     return TensorDictModule(net, in_keys=[("agents", "observation")], out_keys=[("agents", "state_value")])
 
 
-def train(env, cfg: TrainConfig = TrainConfig(), device="cpu", progress=None) -> TrainResult:
+def train(
+    env: EnvBase,
+    cfg: TrainConfig = ORIGINAL,
+    device: str = "cpu",
+    progress: Callable[[int, float], None] | None = None,
+) -> TrainResult:
     """Train a MAPPO policy on env and return the per-iteration rewards and the policy.
 
     progress, if given, is called after each iteration with (iteration, reward).

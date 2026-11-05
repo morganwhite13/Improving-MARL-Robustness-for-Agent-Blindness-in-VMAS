@@ -125,7 +125,9 @@ def test_runs_inside_a_real_vmas_environment():
     from torchrl.envs.libs.vmas import VmasEnv
     from torchrl.envs.utils import check_env_specs
 
-    base = VmasEnv(scenario="balance", num_envs=8, continuous_actions=True, max_steps=20, device="cpu", n_agents=N_AGENTS)
+    base = VmasEnv(
+        scenario="balance", num_envs=8, continuous_actions=True, max_steps=20, device="cpu", n_agents=N_AGENTS
+    )
     env = TransformedEnv(base, BlindRandomAgentsIfProbabilityForJSteps(N_AGENTS, blind_prob=0.5, max_blind_steps=4))
     check_env_specs(env)
     rollout = env.rollout(30, break_when_any_done=False)

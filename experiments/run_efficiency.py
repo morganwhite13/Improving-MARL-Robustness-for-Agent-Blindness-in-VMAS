@@ -7,7 +7,10 @@ amounts of work per iteration can be compared fairly.
 
 Usage: python experiments/run_efficiency.py <config> <seed> <out.json>
 """
-import json, os, sys, time
+import json
+import os
+import sys
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import torch  # noqa: E402

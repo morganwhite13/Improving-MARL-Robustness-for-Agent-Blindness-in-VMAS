@@ -53,7 +53,10 @@ def test_every_plot_script_is_covered():
     assert scripts == {s for s, _, _ in PLOTS}
 
 
-@pytest.mark.parametrize("script", sorted(f for f in os.listdir(EXPERIMENTS) if f.startswith("run_") and f.endswith(".py")))
+RUNNERS = sorted(f for f in os.listdir(EXPERIMENTS) if f.startswith("run_") and f.endswith(".py"))
+
+
+@pytest.mark.parametrize("script", RUNNERS)
 def test_runner_scripts_parse(script):
     with open(os.path.join(EXPERIMENTS, script), encoding="utf-8") as f:
         ast.parse(f.read(), filename=script)

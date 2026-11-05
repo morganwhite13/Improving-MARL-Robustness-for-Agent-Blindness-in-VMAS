@@ -1,5 +1,7 @@
 """VMAS environments with optional blindness, built the way the training script builds them."""
-from torchrl.envs import RewardSum, TransformedEnv
+from collections.abc import Callable
+
+from torchrl.envs import RewardSum, Transform, TransformedEnv
 from torchrl.envs.libs.vmas import VmasEnv
 
 from .blindness import (
@@ -23,8 +25,17 @@ BLINDNESS = {
 }
 
 
-def make_env(scenario="balance", n_agents=3, num_envs=30, max_steps=200, device="cpu",
-             blindness="none", blind_prob=0.1, max_blind_steps=10, **scenario_kwargs):
+def make_env(
+    scenario: str = "balance",
+    n_agents: int = 3,
+    num_envs: int = 30,
+    max_steps: int = 200,
+    device: str = "cpu",
+    blindness: str | Callable[[int], Transform] = "none",
+    blind_prob: float = 0.1,
+    max_blind_steps: int = 10,
+    **scenario_kwargs,
+) -> TransformedEnv:
     """A vectorised VMAS environment with episode rewards summed and optional blindness.
 
     blindness is a name from BLINDNESS, or a function that takes the number of

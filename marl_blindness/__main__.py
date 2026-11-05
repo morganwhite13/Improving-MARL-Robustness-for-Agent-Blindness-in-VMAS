@@ -1,7 +1,6 @@
 """Command line: train a policy, or evaluate a saved one.
 
-    python -m marl_blindness train --blindness one-steps --preset tuned --iters 100 --seed 0 \
-        --out run.json --save-policy policy.pt
+    python -m marl_blindness train --blindness one-steps --preset tuned --iters 100 --save-policy policy.pt
     python -m marl_blindness evaluate policy.pt --blindness each-steps --probs 0 0.1 0.2
 
 Blindness kinds: none, one-every-step, all-every-step, one, each, one-steps,
@@ -38,7 +37,10 @@ def cmd_train(args):
     torch.manual_seed(args.seed)
     env.set_seed(args.seed)
     start = time.time()
-    result = train(env, cfg, progress=lambda i, r: print(f"iteration {i + 1}/{cfg.n_iters}: reward {r:.2f}", flush=True))
+    def report(i, reward):
+        print(f"iteration {i + 1}/{cfg.n_iters}: reward {reward:.2f}", flush=True)
+
+    result = train(env, cfg, progress=report)
     minutes = (time.time() - start) / 60
     print(f"final reward {result.rewards[-1]:.2f} after {minutes:.1f} min")
     if args.save_policy:
@@ -57,10 +59,9 @@ def cmd_evaluate(args):
     num_envs = saved["config"]["frames_per_batch"] // max_steps
     for prob in args.probs:
         kind = args.blindness if prob > 0 else "none"
-        score = evaluate(policy, lambda: make_env(scenario=args.scenario, n_agents=args.agents, num_envs=num_envs,
-                                                  max_steps=max_steps, blindness=kind, blind_prob=prob,
-                                                  max_blind_steps=args.max_blind_steps),
-                         seed=args.seed, rollouts=args.rollouts)
+        env_kwargs = dict(scenario=args.scenario, n_agents=args.agents, num_envs=num_envs, max_steps=max_steps,
+                          blindness=kind, blind_prob=prob, max_blind_steps=args.max_blind_steps)
+        score = evaluate(policy, lambda kw=env_kwargs: make_env(**kw), seed=args.seed, rollouts=args.rollouts)
         print(f"blindness {kind} p={prob}: mean episode reward {score:.2f}")
 
 

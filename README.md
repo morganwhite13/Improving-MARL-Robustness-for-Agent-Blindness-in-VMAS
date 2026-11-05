@@ -336,7 +336,7 @@ python "MARL Robustness for Agent Blindness in VMAS.py"
 
 ### Using the `marl_blindness` package
 
-The training code is also available as a package, so one setting can be trained and evaluated without running every experiment in the script. With the same settings and seed it reproduces the script's results exactly (a test checks this).
+The training code is also available as a package, so one setting can be trained and evaluated without running every experiment in the script. With the same settings and seed it reproduces the script's results exactly (a test checks this). Install it with `pip install -e .` (Python 3.10 or 3.11), which also adds a `marl-blindness` command; `pip install -e ".[dev]"` adds pytest and ruff (`ruff check .` and `pytest` should both pass).
 
 ```bash
 # Train with one agent blinded for 1-10 steps (probability 0.1), save the policy

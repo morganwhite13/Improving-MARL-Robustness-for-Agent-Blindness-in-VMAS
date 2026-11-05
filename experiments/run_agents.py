@@ -10,13 +10,19 @@ blindness; the share of the no-blindness reward kept can.
 
 Usage: python experiments/run_agents.py . <seed> experiments/agents_seed<seed>.json [n_iters]
 """
-import json, os, sys, time
+import json
+import os
+import sys
+import time
+
 from common import load_training_script, make_env
+
 repo, seed, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 n_iters = int(sys.argv[4]) if len(sys.argv) > 4 else None
 ns = load_training_script(repo, "agents", n_iters)
 
 import torch
+
 from blindness import BlindOneRandomAgentIfProbabilityForJSteps
 
 torch.set_num_threads(1)

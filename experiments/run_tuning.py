@@ -5,8 +5,13 @@ train_environment_variables, unchanged), then trains each setup below on env6
 (one random agent blinded for 1-10 steps with probability 0.1) for one seed.
 Usage: python experiments/run_tuning.py . <seed> experiments/tuning_seed<seed>.json
 """
-import json, os, sys, time
+import json
+import os
+import sys
+import time
+
 from common import load_training_script
+
 repo, seed, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 ns = load_training_script(repo, "tuning")
 
@@ -19,6 +24,7 @@ SETUPS = {
 }
 
 import torch
+
 torch.set_num_threads(1)
 env = ns["env6"]
 results = json.load(open(out)) if os.path.exists(out) else {}
