@@ -8,13 +8,18 @@ Writes a small JSON file, so many runs can go in parallel.
 
 Usage: python experiments/run_sweep.py . <seed> <out.json> <clip> <batch> <epochs>
 """
-import json, sys, time
+import json
+import sys
+import time
+
 from common import load_training_script
+
 repo, seed, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 clip, batch, epochs = float(sys.argv[4]), int(sys.argv[5]), int(sys.argv[6])
 ns = load_training_script(repo, "sweep")
 
 import torch
+
 torch.set_num_threads(1)
 env = ns["env6"]
 torch.manual_seed(seed)

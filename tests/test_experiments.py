@@ -17,6 +17,8 @@ EXPERIMENTS = os.path.join(os.path.dirname(__file__), "..", "experiments")
 # (script, arguments, plot it writes)
 PLOTS = [
     ("plot_exp1.py", [], "exp1_rewards.png"),
+    ("plot_variants.py", [], "variants.png"),
+    ("plot_efficiency.py", [], "efficiency.png"),
     ("plot_exp2.py", [], "exp2_norm.png"),
     ("plot_tuning.py", [], "tuning_rewards.png"),
     ("plot_sweep.py", [], "sweep.png"),
@@ -53,7 +55,10 @@ def test_every_plot_script_is_covered():
     assert scripts == {s for s, _, _ in PLOTS}
 
 
-@pytest.mark.parametrize("script", sorted(f for f in os.listdir(EXPERIMENTS) if f.startswith("run_") and f.endswith(".py")))
+RUNNERS = sorted(f for f in os.listdir(EXPERIMENTS) if f.startswith("run_") and f.endswith(".py"))
+
+
+@pytest.mark.parametrize("script", RUNNERS)
 def test_runner_scripts_parse(script):
     with open(os.path.join(EXPERIMENTS, script), encoding="utf-8") as f:
         ast.parse(f.read(), filename=script)

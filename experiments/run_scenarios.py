@@ -10,13 +10,19 @@ Some scenarios fix their own number of agents and ignore n_agents.
 
 Usage: python experiments/run_scenarios.py . <seed> <out.json> <scenario> <none|one> [n_iters]
 """
-import json, sys, time, warnings
+import json
+import sys
+import time
+import warnings
+
 from common import load_training_script, make_env
+
 repo, seed, out, scenario, cond = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4], sys.argv[5]
 n_iters = int(sys.argv[6]) if len(sys.argv) > 6 else None
 ns = load_training_script(repo, "scenarios", n_iters)
 
 import torch
+
 from blindness import BlindOneRandomAgentIfProbabilityForJSteps
 
 torch.set_num_threads(1)

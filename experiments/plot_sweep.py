@@ -16,6 +16,7 @@ import sys
 
 import matplotlib
 import matplotlib.ticker
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -44,7 +45,8 @@ for ax, (key, label) in zip(axes, [("clip", "PPO clip value"), ("batch", "Miniba
     means, stds = [], []
     for v in values:
         f = np.array([r["final"] for r in runs if r["setup"][key] == v and all(r["setup"][o] == DEFAULT[o] for o in others)])
-        means.append(f.mean()); stds.append(f.std(ddof=1))
+        means.append(f.mean())
+        stds.append(f.std(ddof=1))
         ax.scatter([v] * len(f), f, color="black", s=10, zorder=3)
         print(f"{key:6s} {v:>6}: {f.mean():6.1f} ± {f.std(ddof=1):4.1f}  (n={len(f)})")
     ax.errorbar(values, means, yerr=stds, marker="o", capsize=3, color="#7aa6d6")

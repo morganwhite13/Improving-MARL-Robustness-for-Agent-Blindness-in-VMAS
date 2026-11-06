@@ -14,13 +14,19 @@ train_environment_variables, unchanged), then for one seed:
 Usage: python experiments/run_robustness.py . <seed> experiments/robustness_seed<seed>.json [n_iters]
 n_iters overrides the script's 25 training iterations (e.g. 100 for a longer run).
 """
-import json, os, sys, time
+import json
+import os
+import sys
+import time
+
 from common import evaluate, load_training_script, make_env
+
 repo, seed, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 n_iters = int(sys.argv[4]) if len(sys.argv) > 4 else None
 ns = load_training_script(repo, "robustness", n_iters)
 
 import torch
+
 from blindness import BlindOneRandomAgentIfProbabilityForJSteps, BlindRandomAgentsIfProbabilityForJSteps
 
 torch.set_num_threads(1)

@@ -307,6 +307,47 @@ What this shows:
 
 To reproduce: `python experiments/run_robustness.py . <seed> experiments/robustness_seed<seed>.json [n_iters]` for each seed (about 13 minutes per seed on one CPU core at 25 iterations, 40 at 100), merge the seed files into `experiments/robustness_results.json` (or `robustness_100iters_results.json`), then `python experiments/plot_robustness.py [results file]`.
 
+### Beyond the original experiments: blindness-aware agents and a curriculum
+
+Three ideas, each trained for 100 iterations with one random agent blinded for 1–10 steps (probability 0.1), 3 seeds, and evaluated exactly as in the robustness test (`experiments/run_variant.py`):
+
+- **Blind flag:** each agent's observation gains a flag that is 1 while it's blind (`make_env(aware="flag")`).
+- **Flag and memory:** a blind agent also keeps its last real observation instead of seeing zeros (`make_env(aware="memory")`), like a sensor that holds its last reading.
+- **Curriculum:** the blindness probability rises from 0 to 0.1 over the first 50 iterations, then stays at 0.1.
+
+| Trained with | One agent blind, p = 0.5 | Each agent blind, p = 0.1 | p = 0.2 | p = 0.5 |
+|---|---|---|---|---|
+| No blindness | 43.2 | 30.0 | 15.4 | −1.9 |
+| One-agent blindness | 58.2 | 51.5 | 32.2 | 3.4 |
+| Each-agent blindness | 65.0 | 61.7 | 43.1 | 5.7 |
+| **One-agent blindness + flag and memory** | **70.2** | **67.6** | **63.1** | **41.1** |
+| One-agent blindness + flag only | 52.9 | 43.2 | 11.8 | −1.6 |
+| One-agent blindness, curriculum | 36.5 | 20.5 | 1.3 | −6.5 |
+| **Each-agent blindness + flag and memory** | **75.8** | **74.7** | **70.7** | **51.6** |
+
+Mean episode reward over 3 seeds. With no blindness, every policy scores 70–73, except the last one, which scores 78.
+
+![Evaluation reward against blindness probability for each variant](experiments/variants.png)
+
+- **Memory makes the team far more robust.** With a blind agent keeping its last real observation, the team keeps 97% of its reward when one agent is blind half the time. When every agent can go blind 20% of the time, it scores 63 against at most 43 for any plain policy, even though it only trained with one agent blinded at a time. It costs nothing when no one is blind.
+- **Memory with each-agent blindness training is best of all.** Trained with every agent able to go blind, the memory policy keeps 96% of its reward at each-agent p = 0.1 and 90% at p = 0.2, and also has the highest mean reward with no blindness (78 ± 5 vs 70–73), though with 3 seeds that last gap is within the spread.
+- **A flag alone doesn't help.** Knowing you're blind, with nothing to act on, does slightly worse than plain blindness training.
+- **The curriculum hurts.** Ramping blindness up means less blindness during training, and robustness falls to about the no-blindness policy's level.
+
+**Does memory help in another scenario?** In give_way (2 agents swap places through a narrow corridor), 3 seeds each, 100 iterations:
+
+| Trained with | No blindness | Each agent blind, p = 0.1 | p = 0.2 | p = 0.5 |
+|---|---|---|---|---|
+| No blindness | **4.62** | 3.75 | 3.13 | 1.31 |
+| Each-agent blindness | 3.68 | 3.53 | 3.17 | 2.93 |
+| Each-agent blindness + flag and memory | 3.87 | **3.87** | **3.85** | **3.83** |
+
+Memory makes the give_way policy almost immune to blindness: it loses 1% of its reward when every agent is blind half the time, while the plain policies lose 22% and 72%. Unlike in balance, though, it isn't free. With no blindness it scores 16% less than the policy trained without blindness, which stays ahead until blindness reaches about 10–20%. It beats plain blindness training at every level.
+
+**The scenarios that didn't learn** (wheel, ball_passage) still don't with a longer horizon (`gamma` 0.99, GAE λ 0.95) or more exploration (entropy 0.01), 100 iterations, 2 seeds each. They likely need reward shaping or a different setup.
+
+To reproduce: `python experiments/run_variant.py <variant> <seed> <out.json>` (variants: `aware-flag`, `aware-memory`, `aware-memory-each`, `plain-none`, `plain-each`, `curriculum`, any of these with `@<scenario>`, `stuck:<scenario>:<setting>`), merge into `experiments/variants_results.json`, then `python experiments/plot_variants.py`.
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -333,6 +374,33 @@ python "MARL Robustness for Agent Blindness in VMAS.py"
 # The script will train agents on multiple blindness scenarios
 # and generate performance plots automatically
 ```
+
+### Using the `marl_blindness` package
+
+The training code is also available as a package, so one setting can be trained and evaluated without running every experiment in the script. With the same settings and seed it reproduces the script's results exactly (a test checks this). Install it with `pip install -e .` (Python 3.10 or 3.11), which also adds a `marl-blindness` command; `pip install -e ".[dev]"` adds pytest and ruff (`ruff check .` and `pytest` should both pass).
+
+```bash
+# Train with one agent blinded for 1-10 steps (probability 0.1), save the policy
+python -m marl_blindness train --blindness one-steps --preset tuned --iters 100 --seed 0 \
+    --out run.json --save-policy policy.pt
+
+# Evaluate it on fresh episodes when every agent can go blind
+python -m marl_blindness evaluate policy.pt --blindness each-steps --probs 0 0.1 0.2
+```
+
+```python
+import torch
+from marl_blindness import TUNED, evaluate, make_env, train
+
+env = make_env(blindness="one-steps")
+torch.manual_seed(0); env.set_seed(0)
+result = train(env, TUNED.with_(n_iters=100))
+score = evaluate(result.policy, lambda: make_env(blindness="each-steps", blind_prob=0.2), seed=1000)
+```
+
+Presets: `original` is the script's settings; `tuned` is the best configuration from the hyperparameter re-run (clip 0.3, 30 epochs), which scored 55.6 ± 1.8 against 21.3 ± 7.6 for `original` after 25 iterations. But a `tuned` iteration takes about 1.65× as long, so for a fixed amount of compute **`original` with more iterations is better**: given the same wall-clock time it reached 63.0 against 49.4 after 7 minutes, and a higher learning rate (1e-3) was worse than both (`experiments/run_efficiency.py`, plot below).
+
+![Training reward against wall-clock minutes for four settings](experiments/efficiency.png) Blindness kinds: `none`, `one-every-step`, `all-every-step`, `one`, `each`, `one-steps`, `each-steps`.
 
 ### Training Custom Scenarios
 
@@ -411,9 +479,11 @@ Critic Network:
 ```
 Improving-MARL-Robustness-for-Agent-Blindness-in-VMAS/
 ├── MARL Robustness for Agent Blindness in VMAS.py   # Experiments and MAPPO training
-├── blindness.py                                     # Blindness transforms
+├── marl_blindness/                                  # Package: config presets, environments, training, evaluation, CLI
+├── blindness.py                                     # Re-exports marl_blindness/blindness.py for existing imports
 ├── tests/test_blindness.py                          # Tests for the transforms
 ├── tests/test_experiments.py                        # Every plot script runs on the committed results
+├── tests/test_package.py                            # The package reproduces the script; CLI, save and load
 ├── experiments/                                     # Re-runs and robustness test: scripts, results, plots
 ├── .github/workflows/tests.yml                      # Runs the tests in CI
 ├── README.md                                        # This file

@@ -9,14 +9,19 @@ blindness probability 0.1, for both kinds of blindness.
 
 Usage: python experiments/run_duration.py . <seed> <out.json> <none|one> [n_iters] [policy.pt]
 """
-import json, sys, time
+import json
+import sys
+import time
+
 from common import evaluate, load_training_script, make_env
+
 repo, seed, out, cond = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
 n_iters = int(sys.argv[5]) if len(sys.argv) > 5 else None
 policy_path = sys.argv[6] if len(sys.argv) > 6 else None
 ns = load_training_script(repo, "duration", n_iters)
 
 import torch
+
 from blindness import BlindOneRandomAgentIfProbabilityForJSteps, BlindRandomAgentsIfProbabilityForJSteps
 
 torch.set_num_threads(1)

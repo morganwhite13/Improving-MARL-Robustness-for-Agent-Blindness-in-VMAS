@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "marl-blindness"
+version = "0.1.0"
+description = "MAPPO training and evaluation under agent blindness in VMAS"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10,<3.12"
+# The training code uses the TorchRL API from late 2024 (e.g. SyncDataCollector),
+# which newer TorchRL releases removed, so these versions are pinned.
+dependencies = [
+    "torch==2.5.1",
+    "torchrl==0.6.0",
+    "tensordict==0.6.2",
+    "vmas==1.4.3",
+    "numpy<2",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+experiments = ["matplotlib"]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+marl-blindness = "marl_blindness.__main__:main"
+
+[tool.setuptools]
+packages = ["marl_blindness"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+# The original experiment script is kept as written, for reproducibility
+extend-exclude = ["MARL Robustness for Agent Blindness in VMAS.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"blindness.py" = ["F401", "F403"]
+# Analysis scripts: long lines and plain zip() are fine here
+"experiments/*" = ["E401", "E402", "E501", "B905"]
+"tests/*" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
