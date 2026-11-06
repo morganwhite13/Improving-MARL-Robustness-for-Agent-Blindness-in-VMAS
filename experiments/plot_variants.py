@@ -13,7 +13,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 here = os.path.dirname(os.path.abspath(__file__))
-variants = json.load(open(os.path.join(here, "variants_results.json")))["runs"]
+variants = [r for r in json.load(open(os.path.join(here, "variants_results.json")))["runs"]
+            if r.get("scenario", "balance") == "balance"]  # other scenarios are reported in the README
 robust = json.load(open(os.path.join(here, "robustness_100iters_results.json")))["seeds"]
 etypes = ["One agent, 1-10 steps", "Each agent, 1-10 steps"]
 probs = ["0.0", "0.05", "0.1", "0.2", "0.3", "0.5"]

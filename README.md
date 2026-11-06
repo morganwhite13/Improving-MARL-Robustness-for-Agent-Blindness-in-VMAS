@@ -334,9 +334,19 @@ Mean episode reward over 3 seeds. With no blindness, every policy scores 70–73
 - **A flag alone doesn't help.** Knowing you're blind, with nothing to act on, does slightly worse than plain blindness training.
 - **The curriculum hurts.** Ramping blindness up means less blindness during training, and robustness falls to about the no-blindness policy's level.
 
+**Does memory help in another scenario?** In give_way (2 agents swap places through a narrow corridor), 3 seeds each, 100 iterations:
+
+| Trained with | No blindness | Each agent blind, p = 0.1 | p = 0.2 | p = 0.5 |
+|---|---|---|---|---|
+| No blindness | **4.62** | 3.75 | 3.13 | 1.31 |
+| Each-agent blindness | 3.68 | 3.53 | 3.17 | 2.93 |
+| Each-agent blindness + flag and memory | 3.87 | **3.87** | **3.85** | **3.83** |
+
+Memory makes the give_way policy almost immune to blindness: it loses 1% of its reward when every agent is blind half the time, while the plain policies lose 22% and 72%. Unlike in balance, though, it isn't free. With no blindness it scores 16% less than the policy trained without blindness, which stays ahead until blindness reaches about 10–20%. It beats plain blindness training at every level.
+
 **The scenarios that didn't learn** (wheel, ball_passage) still don't with a longer horizon (`gamma` 0.99, GAE λ 0.95) or more exploration (entropy 0.01), 100 iterations, 2 seeds each. They likely need reward shaping or a different setup.
 
-To reproduce: `python experiments/run_variant.py <variant> <seed> <out.json>` (variants: `aware-flag`, `aware-memory`, `aware-memory-each`, `curriculum`, `stuck:<scenario>:<setting>`), merge into `experiments/variants_results.json`, then `python experiments/plot_variants.py`.
+To reproduce: `python experiments/run_variant.py <variant> <seed> <out.json>` (variants: `aware-flag`, `aware-memory`, `aware-memory-each`, `plain-none`, `plain-each`, `curriculum`, any of these with `@<scenario>`, `stuck:<scenario>:<setting>`), merge into `experiments/variants_results.json`, then `python experiments/plot_variants.py`.
 
 ## 🚀 Getting Started
 
